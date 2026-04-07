@@ -202,18 +202,18 @@
     "Call_PDL1": {
       "type": "CallSubmodule",
       "submodule": "nsclc/nsclc_pdl1",
-      "direct_transition": "Call_Renal_Function"
-    },
-
-    "Call_Renal_Function": {
-      "type": "CallSubmodule",
-      "submodule": "nsclc/nsclc_renal_function",
       "direct_transition": "Call_Platinum_History"
     },
 
     "Call_Platinum_History": {
       "type": "CallSubmodule",
       "submodule": "nsclc/nsclc_platinum_history",
+      "direct_transition": "Call_Renal_Function"
+    },
+
+    "Call_Renal_Function": {
+      "type": "CallSubmodule",
+      "submodule": "nsclc/nsclc_renal_function",
       "direct_transition": "Call_Drug_Interactions"
     },
 
