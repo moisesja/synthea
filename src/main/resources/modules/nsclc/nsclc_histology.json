@@ -166,8 +166,8 @@
           ],
           "value_code": {
             "system": "SNOMED-CT",
-            "code": "254637007",
-            "display": "Non-small cell lung cancer (disorder)"
+            "code": "128633003",
+            "display": "Non-small cell carcinoma (morphologic abnormality)"
           }
         }
       ],
