@@ -1,0 +1,136 @@
+{
+  "name": "NSCLC_Tumor_Size",
+  "remarks": [
+    "Tumor size submodule for Non-Small Cell Lung Cancer.",
+    "Reads nsclc_t_stage (T1–T4) set by nsclc_staging submodule.",
+    "Emits one Observation (LOINC 33756-8) with valueQuantity in cm.",
+    "Size ranges follow AJCC 8th edition T-category cutoffs for NSCLC.",
+    "",
+    "Sources:",
+    "  AJCC Cancer Staging Manual, 8th Edition",
+    "  CAP Cancer Protocols: https://www.cap.org/protocols-and-guidelines"
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "T_Stage_Branch"
+    },
+
+    "T_Stage_Branch": {
+      "type": "Simple",
+      "remarks": [
+        "Route to tumor size range based on T-stage set by staging submodule.",
+        "T1: ≤3 cm, T2: >3–5 cm, T3: >5–7 cm, T4: >7 cm"
+      ],
+      "conditional_transition": [
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_t_stage",
+            "operator": "==",
+            "value": "T1"
+          },
+          "transition": "Tumor_Size_T1"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_t_stage",
+            "operator": "==",
+            "value": "T2"
+          },
+          "transition": "Tumor_Size_T2"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_t_stage",
+            "operator": "==",
+            "value": "T3"
+          },
+          "transition": "Tumor_Size_T3"
+        },
+        {
+          "transition": "Tumor_Size_T4"
+        }
+      ]
+    },
+
+    "Tumor_Size_T1": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "cm",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "33756-8",
+          "display": "Tumor size.greatest dimension by CAP cancer protocols"
+        }
+      ],
+      "range": {
+        "low": 0.5,
+        "high": 3.0
+      },
+      "direct_transition": "Terminal"
+    },
+
+    "Tumor_Size_T2": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "cm",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "33756-8",
+          "display": "Tumor size.greatest dimension by CAP cancer protocols"
+        }
+      ],
+      "range": {
+        "low": 3.0,
+        "high": 5.0
+      },
+      "direct_transition": "Terminal"
+    },
+
+    "Tumor_Size_T3": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "cm",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "33756-8",
+          "display": "Tumor size.greatest dimension by CAP cancer protocols"
+        }
+      ],
+      "range": {
+        "low": 5.0,
+        "high": 7.0
+      },
+      "direct_transition": "Terminal"
+    },
+
+    "Tumor_Size_T4": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "cm",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "33756-8",
+          "display": "Tumor size.greatest dimension by CAP cancer protocols"
+        }
+      ],
+      "range": {
+        "low": 7.0,
+        "high": 10.0
+      },
+      "direct_transition": "Terminal"
+    },
+
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}
