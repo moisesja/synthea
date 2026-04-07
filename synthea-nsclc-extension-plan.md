@@ -660,20 +660,142 @@ echo "Done. $POPULATION NSCLC patients loaded."
 
 ---
 
-## 11. Implementation Phases & Effort Estimate
+## 11. Implementation Phases (Two-Agent Parallel Execution)
 
-| Phase | Deliverable | Mechanism | Est. Effort |
-|-------|-------------|-----------|-------------|
-| **P0** | Repo scaffold + `synthea.properties` | Config | 1 day |
-| **P1** | `nsclc.json` parent module (diagnosis, encounter, branching) | GMF JSON | 2 days |
-| **P2** | Staging + histology submodules (Endpoints 1 & 2) | GMF JSON | 2 days |
-| **P3** | Clinical Observation submodules (Endpoints 3, 4, 6, 9) | GMF JSON | 2 days |
-| **P4** | Medication submodules (Endpoints 5 & 7) | GMF JSON | 2 days |
-| **P5** | EGFR genomic Observation submodule (Endpoint 8, layer 1) | GMF JSON | 1 day |
-| **P6** | Flexporter YAML enrichment mappings | Flexporter YAML | 2 days |
-| **P7** | Python post-processor (MolecularSequence, distributions) | Python | 3 days |
-| **P8** | End-to-end generation + HAPI ingestion + query validation | Integration | 2 days |
-| **Total** | 1,000-patient NSCLC FHIR R4 dataset | | **~15 days** |
+This section organizes implementation into phases that allow **two agentic software engineers (Agent Alpha and Agent Beta)** to work in parallel without merge conflicts. The split is by clinical domain — Alpha owns the **staging & morphology** pipeline, Beta owns the **biomarkers & treatment** pipeline. Each agent works in a separate file set with no overlapping edits.
+
+### Phase 0 — Shared Foundation (Sequential — both agents)
+
+Before parallel work begins, establish the shared interface contract and scaffold. **One agent builds this while the other reviews.**
+
+| Task | File | Owner |
+|------|------|-------|
+| Create `synthea.properties` overrides (Section 8a) | `src/main/resources/synthea.properties` | Alpha |
+| Create `nsclc.json` parent module with all `CallSubmodule` stubs | `src/main/resources/modules/nsclc.json` | Alpha |
+| Review parent module attribute contract (see below) | — | Beta (reviewer) |
+
+**Attribute Contract** — the parent module sets these attributes via `SetAttribute` and `DistributedTransition` before calling any submodule. Both agents must code against these exact names:
+
+| Attribute Name | Type | Set By | Consumed By |
+|----------------|------|--------|-------------|
+| `nsclc_condition` | Reference | Parent `ConditionOnset` | Endpoints 5, 7 (medication `reason`) |
+| `nsclc_histology_subtype` | String (`adenocarcinoma`, `squamous`, `large_cell`, `nos`) | Parent `DistributedTransition` | Endpoints 2, 8 |
+| `nsclc_stage` | String (`I`, `II`, `III`, `IV`) | Parent `DistributedTransition` | Endpoints 1, 3, 4, 5, 7 |
+| `nsclc_t_stage` | String (`T1`–`T4`) | Staging submodule | Endpoint 3 |
+| `nsclc_n_stage` | String (`N0`–`N3`) | Staging submodule | Endpoint 4 |
+| `nsclc_egfr_positive` | Boolean | EGFR submodule | Endpoint 7 |
+| `nsclc_pdl1_tps_category` | String (`negative`, `intermediate`, `high`) | PD-L1 submodule | Endpoint 7 |
+| `nsclc_prior_platinum` | Boolean | Platinum history submodule | Endpoint 7 |
+| `nsclc_egfr_mutation_subtype` | String (`exon19_del`, `L858R`, `exon20_ins`, `none`) | EGFR submodule | Post-processor |
+
+**Gate:** Phase 1 begins only after both agents approve the attribute contract and parent module skeleton.
+
+---
+
+### Phase 1 — Parallel Submodule Development
+
+Both agents work simultaneously on their assigned submodules. **No shared files are edited in this phase** — each submodule is a standalone JSON file, and each agent owns a distinct Flexporter YAML file.
+
+#### Agent Alpha — Staging & Morphology (Endpoints 1–4)
+
+| Step | Deliverable | File | Depends On |
+|------|-------------|------|------------|
+| A1.1 | TNM staging submodule | `src/main/resources/modules/submodules/nsclc_staging.json` | Parent module (reads `nsclc_stage`; sets `nsclc_t_stage`, `nsclc_n_stage`) |
+| A1.2 | Histology submodule | `src/main/resources/modules/submodules/nsclc_histology.json` | Parent module (reads `nsclc_histology_subtype`) |
+| A1.3 | Tumor size submodule | `src/main/resources/modules/submodules/nsclc_tumor_size.json` | A1.1 (reads `nsclc_t_stage`) |
+| A1.4 | Lymph node count submodule | `src/main/resources/modules/submodules/nsclc_lymph_nodes.json` | A1.1 (reads `nsclc_n_stage`) |
+| A1.5 | Staging Flexporter actions | `flexporter/nsclc_staging_profiles.yml` | A1.1 complete |
+| A1.6 | Validate Endpoints 1–4 in isolation | `./run_synthea -p 10 -m nsclc -fm flexporter/nsclc_staging_profiles.yml` | A1.1–A1.5 |
+
+**Key references for Alpha:**
+- Template for TNM Observations: `src/main/resources/modules/breast_cancer/tnm_diagnosis.json` (reuse AJCC SNOMED codes)
+- Template for staging transitions: `src/main/resources/modules/veteran_lung_cancer.json` (adapt stage distribution)
+- Flexporter DSL reference: `src/test/resources/flexporter/mcode.yml` (profiles + set_values + $findRef)
+
+**Alpha's Flexporter file** (`nsclc_staging_profiles.yml`) covers:
+- `profiles:` for `mcode-tnm-clinical-stage-group`, `mcode-tnm-clinical-primary-tumor-category`, `mcode-tnm-clinical-regional-nodes-category`, `mcode-tnm-clinical-distant-metastases-category`
+- `set_values:` for `hasMember` wiring on 21908-9 → T/N/M via `$findRef()`
+- `set_values:` for `Observation.method` (AJCC 8th edition)
+- `profiles:` for `mcode-cancer-patient` on `Patient`
+
+#### Agent Beta — Biomarkers & Treatment (Endpoints 5–9)
+
+| Step | Deliverable | File | Depends On |
+|------|-------------|------|------------|
+| B1.1 | EGFR status submodule | `src/main/resources/modules/submodules/nsclc_egfr_status.json` | Parent module (reads `nsclc_histology_subtype`; sets `nsclc_egfr_positive`, `nsclc_egfr_mutation_subtype`) |
+| B1.2 | PD-L1 expression submodule | `src/main/resources/modules/submodules/nsclc_pdl1.json` | Parent module (sets `nsclc_pdl1_tps_category`) |
+| B1.3 | Renal function submodule | `src/main/resources/modules/submodules/nsclc_renal_function.json` | None (independent) |
+| B1.4 | Platinum history submodule | `src/main/resources/modules/submodules/nsclc_platinum_history.json` | Parent module (reads `nsclc_stage`; sets `nsclc_prior_platinum`) |
+| B1.5 | Drug interactions submodule | `src/main/resources/modules/submodules/nsclc_drug_interactions.json` | B1.1, B1.2, B1.4 (reads `nsclc_egfr_positive`, `nsclc_pdl1_tps_category`, `nsclc_prior_platinum`, `nsclc_stage`) |
+| B1.6 | Biomarker Flexporter actions | `flexporter/nsclc_biomarker_treatment.yml` | B1.1 complete |
+| B1.7 | Validate Endpoints 5–9 in isolation | `./run_synthea -p 10 -m nsclc -fm flexporter/nsclc_biomarker_treatment.yml` | B1.1–B1.6 |
+
+**Key references for Beta:**
+- Template for MedicationOrder/MedicationEnd pairs: `src/main/resources/modules/veteran_lung_cancer.json` (cisplatin/paclitaxel patterns)
+- Flexporter DSL reference: `src/test/resources/flexporter/mcode.yml`
+
+**Beta's Flexporter file** (`nsclc_biomarker_treatment.yml`) covers:
+- `profiles:` for `mcode-genomic-variant` on 69548-6
+- `set_values:` for EGFR gene-studied component (48018-6 → HGNC:3236)
+- `set_values:` for `MedicationRequest.reasonReference` → NSCLC Condition
+
+**File ownership boundary (no conflicts):**
+
+| File / Directory | Alpha | Beta |
+|------------------|-------|------|
+| `nsclc.json` (parent) | Owner (Phase 0) | Reviewer only |
+| `nsclc_staging.json` | Owner | — |
+| `nsclc_histology.json` | Owner | — |
+| `nsclc_tumor_size.json` | Owner | — |
+| `nsclc_lymph_nodes.json` | Owner | — |
+| `nsclc_egfr_status.json` | — | Owner |
+| `nsclc_pdl1.json` | — | Owner |
+| `nsclc_renal_function.json` | — | Owner |
+| `nsclc_platinum_history.json` | — | Owner |
+| `nsclc_drug_interactions.json` | — | Owner |
+| `nsclc_staging_profiles.yml` | Owner | — |
+| `nsclc_biomarker_treatment.yml` | — | Owner |
+| `post-processor/` | — | Owner |
+
+---
+
+### Phase 2 — Integration (Sequential — both agents collaborate)
+
+After both agents complete Phase 1 and their isolated validation passes:
+
+| Step | Task | Owner | File |
+|------|------|-------|------|
+| 2.1 | Merge two Flexporter YAMLs into single `nsclc_mcode_mappings.yml` | Alpha | `flexporter/nsclc_mcode_mappings.yml` |
+| 2.2 | Build Python post-processor (MolecularSequence injection, distribution reshaping for PD-L1/tumor size/eGFR) | Beta | `post-processor/nsclc_postprocess.py` |
+| 2.3 | Create `generate.sh` with full pipeline (Synthea → post-processor → HAPI load) | Alpha | `generate.sh` |
+| 2.4 | Run full 100-patient generation with merged Flexporter | Both | — |
+| 2.5 | Validate all 9 endpoint smoke queries return expected resources (Section 13 test list) | Both | — |
+| 2.6 | Run 1,000-patient generation + distribution validation (EGFR ~15%, PD-L1 ≥50% ~30%, staging matches SEER) | Both | — |
+
+---
+
+### Phase Summary (Gantt-style)
+
+```
+             Phase 0        Phase 1                    Phase 2
+             (shared)       (parallel)                 (integration)
+            ┌─────────┐    ┌──────────────────────┐   ┌──────────────────┐
+Agent Alpha │ Parent   │───▶│ Staging + Morphology │──▶│ Merge Flexporter │
+            │ module + │    │ (A1.1–A1.6)          │   │ + generate.sh    │
+            │ config   │    └──────────────────────┘   │ + E2E validation │
+            └─────────┘    ┌──────────────────────┐   │                  │
+Agent Beta  │ Review   │───▶│ Biomarkers + Treat.  │──▶│ Post-processor   │
+            │ contract │    │ (B1.1–B1.7)          │   │ + E2E validation │
+            └─────────┘    └──────────────────────┘   └──────────────────┘
+```
+
+### Conflict Prevention Rules
+
+1. **No shared file edits in Phase 1.** Each agent has exclusive ownership of their submodule JSONs and their Flexporter YAML.
+2. **Parent module (`nsclc.json`) is frozen after Phase 0.** If either agent needs a new attribute, they propose it via the attribute contract table and the other agent approves before the parent is modified.
+3. **Flexporter stays split until Phase 2.** Each agent validates with their own YAML file. Merge happens once both are proven.
+4. **Attribute names are the API boundary.** Agents communicate through shared attributes, not through reading each other's JSON state internals.
+5. **Post-processor is Beta's exclusive domain.** Alpha does not write Python; Beta does not write staging Flexporter YAML.
 
 ---
 
