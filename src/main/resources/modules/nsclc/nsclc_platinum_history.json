@@ -1,0 +1,139 @@
+{
+  "name": "nsclc_platinum_history",
+  "remarks": [
+    "Beta-owned Phase 1 submodule for prior platinum exposure.",
+    "Reads nsclc_stage and sets nsclc_prior_platinum."
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "conditional_transition": [
+        {
+          "condition": {
+            "condition_type": "Or",
+            "conditions": [
+              {
+                "condition_type": "Attribute",
+                "attribute": "nsclc_stage",
+                "operator": "==",
+                "value": "III"
+              },
+              {
+                "condition_type": "Attribute",
+                "attribute": "nsclc_stage",
+                "operator": "==",
+                "value": "IV"
+              }
+            ]
+          },
+          "transition": "Advanced_Stage_Distribution"
+        },
+        {
+          "transition": "Early_Stage_Distribution"
+        }
+      ]
+    },
+    "Advanced_Stage_Distribution": {
+      "type": "Simple",
+      "distributed_transition": [
+        {
+          "distribution": 0.65,
+          "transition": "Set_Prior_Platinum_True"
+        },
+        {
+          "distribution": 0.35,
+          "transition": "Set_Prior_Platinum_False"
+        }
+      ]
+    },
+    "Early_Stage_Distribution": {
+      "type": "Simple",
+      "distributed_transition": [
+        {
+          "distribution": 0.12,
+          "transition": "Set_Prior_Platinum_True"
+        },
+        {
+          "distribution": 0.88,
+          "transition": "Set_Prior_Platinum_False"
+        }
+      ]
+    },
+    "Set_Prior_Platinum_True": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_prior_platinum",
+      "value": true,
+      "direct_transition": "Choose_Platinum_Agent"
+    },
+    "Set_Prior_Platinum_False": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_prior_platinum",
+      "value": false,
+      "direct_transition": "Terminal"
+    },
+    "Choose_Platinum_Agent": {
+      "type": "Simple",
+      "distributed_transition": [
+        {
+          "distribution": 0.60,
+          "transition": "MedicationOrder_Carboplatin"
+        },
+        {
+          "distribution": 0.40,
+          "transition": "MedicationOrder_Cisplatin"
+        }
+      ]
+    },
+    "MedicationOrder_Carboplatin": {
+      "type": "MedicationOrder",
+      "assign_to_attribute": "prior_platinum_med",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "40048",
+          "display": "Carboplatin"
+        }
+      ],
+      "direct_transition": "Observation_PriorPlatinum_Count"
+    },
+    "MedicationOrder_Cisplatin": {
+      "type": "MedicationOrder",
+      "assign_to_attribute": "prior_platinum_med",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "33014",
+          "display": "Cisplatin"
+        }
+      ],
+      "direct_transition": "Observation_PriorPlatinum_Count"
+    },
+    "Observation_PriorPlatinum_Count": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "73965-8",
+          "display": "Number of prior platinum regimens"
+        }
+      ],
+      "exact": {
+        "quantity": 1
+      },
+      "unit": "{regimen}",
+      "direct_transition": "MedicationEnd_PriorPlatinum"
+    },
+    "MedicationEnd_PriorPlatinum": {
+      "type": "MedicationEnd",
+      "referenced_by_attribute": "prior_platinum_med",
+      "direct_transition": "Terminal"
+    },
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}

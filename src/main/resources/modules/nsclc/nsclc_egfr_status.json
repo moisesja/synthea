@@ -1,0 +1,202 @@
+{
+  "name": "nsclc_egfr_status",
+  "remarks": [
+    "Beta-owned Phase 1 submodule for EGFR genomic status.",
+    "Reads nsclc_histology_subtype and sets nsclc_egfr_positive plus nsclc_egfr_mutation_subtype."
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "conditional_transition": [
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_histology_subtype",
+            "operator": "==",
+            "value": "adenocarcinoma"
+          },
+          "transition": "Adenocarcinoma_Prevalence"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_histology_subtype",
+            "operator": "==",
+            "value": "squamous"
+          },
+          "transition": "Squamous_Prevalence"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_histology_subtype",
+            "operator": "==",
+            "value": "large_cell"
+          },
+          "transition": "Large_Cell_Prevalence"
+        },
+        {
+          "transition": "NOS_Prevalence"
+        }
+      ]
+    },
+    "Adenocarcinoma_Prevalence": {
+      "type": "Simple",
+      "remarks": [
+        "Western-population EGFR prevalence is highest in adenocarcinoma."
+      ],
+      "distributed_transition": [
+        {
+          "distribution": 0.15,
+          "transition": "EGFR_Positive"
+        },
+        {
+          "distribution": 0.85,
+          "transition": "EGFR_Negative"
+        }
+      ]
+    },
+    "Squamous_Prevalence": {
+      "type": "Simple",
+      "distributed_transition": [
+        {
+          "distribution": 0.02,
+          "transition": "EGFR_Positive"
+        },
+        {
+          "distribution": 0.98,
+          "transition": "EGFR_Negative"
+        }
+      ]
+    },
+    "Large_Cell_Prevalence": {
+      "type": "Simple",
+      "distributed_transition": [
+        {
+          "distribution": 0.05,
+          "transition": "EGFR_Positive"
+        },
+        {
+          "distribution": 0.95,
+          "transition": "EGFR_Negative"
+        }
+      ]
+    },
+    "NOS_Prevalence": {
+      "type": "Simple",
+      "distributed_transition": [
+        {
+          "distribution": 0.05,
+          "transition": "EGFR_Positive"
+        },
+        {
+          "distribution": 0.95,
+          "transition": "EGFR_Negative"
+        }
+      ]
+    },
+    "EGFR_Positive": {
+      "type": "Simple",
+      "distributed_transition": [
+        {
+          "distribution": 0.45,
+          "transition": "Set_EGFR_Exon19_Del"
+        },
+        {
+          "distribution": 0.40,
+          "transition": "Set_EGFR_L858R"
+        },
+        {
+          "distribution": 0.15,
+          "transition": "Set_EGFR_Exon20_Ins"
+        }
+      ]
+    },
+    "Set_EGFR_Exon19_Del": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_egfr_positive",
+      "value": true,
+      "direct_transition": "Set_Mutation_Exon19_Del"
+    },
+    "Set_Mutation_Exon19_Del": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_egfr_mutation_subtype",
+      "value": "exon19_del",
+      "direct_transition": "Observation_EGFR_Present"
+    },
+    "Set_EGFR_L858R": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_egfr_positive",
+      "value": true,
+      "direct_transition": "Set_Mutation_L858R"
+    },
+    "Set_Mutation_L858R": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_egfr_mutation_subtype",
+      "value": "L858R",
+      "direct_transition": "Observation_EGFR_Present"
+    },
+    "Set_EGFR_Exon20_Ins": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_egfr_positive",
+      "value": true,
+      "direct_transition": "Set_Mutation_Exon20_Ins"
+    },
+    "Set_Mutation_Exon20_Ins": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_egfr_mutation_subtype",
+      "value": "exon20_ins",
+      "direct_transition": "Observation_EGFR_Present"
+    },
+    "EGFR_Negative": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_egfr_positive",
+      "value": false,
+      "direct_transition": "Set_Mutation_None"
+    },
+    "Set_Mutation_None": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_egfr_mutation_subtype",
+      "value": "none",
+      "direct_transition": "Observation_EGFR_Absent"
+    },
+    "Observation_EGFR_Present": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "69548-6",
+          "display": "Genetic variant assessment"
+        }
+      ],
+      "value_code": {
+        "system": "LOINC",
+        "code": "LA9633-4",
+        "display": "Present"
+      },
+      "direct_transition": "Terminal"
+    },
+    "Observation_EGFR_Absent": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "69548-6",
+          "display": "Genetic variant assessment"
+        }
+      ],
+      "value_code": {
+        "system": "LOINC",
+        "code": "LA9634-2",
+        "display": "Absent"
+      },
+      "direct_transition": "Terminal"
+    },
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}

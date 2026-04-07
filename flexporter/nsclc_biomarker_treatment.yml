@@ -1,0 +1,34 @@
+---
+name: NSCLC Biomarker and Treatment Enrichment
+
+applicability: Condition.code.coding.where($this.code = '254637007')
+
+actions:
+ - name: Apply EGFR Genomic Variant Profile
+   profiles:
+   - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-genomic-variant
+     applicability: Observation.code.coding.where($this.code = '69548-6')
+
+
+ - name: Add EGFR Gene Studied Component
+   set_values:
+     - applicability: Observation.code.coding.where($this.code = '69548-6')
+       fields:
+         - location: Observation.component[0].code.coding[0]
+           value:
+             system: http://loinc.org
+             code: "48018-6"
+             display: "Gene studied [ID]"
+         - location: Observation.component[0].valueCodeableConcept.coding[0]
+           value:
+             system: http://www.genenames.org/geneId
+             code: "HGNC:3236"
+             display: "EGFR"
+
+
+ - name: Add Medication Reason References
+   set_values:
+     - applicability: MedicationRequest
+       fields:
+         - location: MedicationRequest.reasonReference[0].reference
+           value: $findRef([Condition.code.coding.where($this.code = '254637007')])
