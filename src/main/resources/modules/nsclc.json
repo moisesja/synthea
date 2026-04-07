@@ -1,0 +1,270 @@
+{
+  "name": "NSCLC",
+  "remarks": [
+    "Parent orchestrator module for Non-Small Cell Lung Cancer (NSCLC).",
+    "Models diagnosis, staging, biomarker profiling, treatment, and follow-up.",
+    "Calls specialized submodules in nsclc/ for each clinical domain.",
+    "",
+    "Attribute contract: this module sets the following shared attributes",
+    "that submodules read via Guard/conditional_transition:",
+    "  nsclc_condition        — ConditionOnset reference (used by medication submodules)",
+    "  nsclc_histology_subtype — adenocarcinoma|squamous|large_cell|nos",
+    "  nsclc_stage            — I|II|III|IV",
+    "",
+    "Epidemiology sources:",
+    "  SEER Cancer Statistics Review: https://seer.cancer.gov/statfacts/html/lungb.html",
+    "  NCCN NSCLC Guidelines v4.2024: https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1450",
+    "  mCODE STU3 IG: https://hl7.org/fhir/us/mcode/STU3/"
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "Age_Guard"
+    },
+
+    "Age_Guard": {
+      "type": "Guard",
+      "allow": {
+        "condition_type": "Age",
+        "operator": ">=",
+        "quantity": 45,
+        "unit": "years"
+      },
+      "direct_transition": "Histology_Distribution"
+    },
+
+    "Histology_Distribution": {
+      "type": "Simple",
+      "remarks": [
+        "NSCLC histological subtype prevalence (SEER/WHO 2021):",
+        "  Adenocarcinoma ~50%, Squamous ~25%, Large cell ~15%, NOS ~10%"
+      ],
+      "distributed_transition": [
+        {
+          "distribution": 0.50,
+          "transition": "Set_Histology_Adenocarcinoma"
+        },
+        {
+          "distribution": 0.25,
+          "transition": "Set_Histology_Squamous"
+        },
+        {
+          "distribution": 0.15,
+          "transition": "Set_Histology_Large_Cell"
+        },
+        {
+          "distribution": 0.10,
+          "transition": "Set_Histology_NOS"
+        }
+      ]
+    },
+
+    "Set_Histology_Adenocarcinoma": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_histology_subtype",
+      "value": "adenocarcinoma",
+      "direct_transition": "Stage_Distribution"
+    },
+
+    "Set_Histology_Squamous": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_histology_subtype",
+      "value": "squamous",
+      "direct_transition": "Stage_Distribution"
+    },
+
+    "Set_Histology_Large_Cell": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_histology_subtype",
+      "value": "large_cell",
+      "direct_transition": "Stage_Distribution"
+    },
+
+    "Set_Histology_NOS": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_histology_subtype",
+      "value": "nos",
+      "direct_transition": "Stage_Distribution"
+    },
+
+    "Stage_Distribution": {
+      "type": "Simple",
+      "remarks": [
+        "NSCLC stage at diagnosis prevalence (SEER 2015-2021):",
+        "  Stage I ~20%, Stage II ~10%, Stage III ~30%, Stage IV ~40%"
+      ],
+      "distributed_transition": [
+        {
+          "distribution": 0.20,
+          "transition": "Set_Stage_I"
+        },
+        {
+          "distribution": 0.10,
+          "transition": "Set_Stage_II"
+        },
+        {
+          "distribution": 0.30,
+          "transition": "Set_Stage_III"
+        },
+        {
+          "distribution": 0.40,
+          "transition": "Set_Stage_IV"
+        }
+      ]
+    },
+
+    "Set_Stage_I": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_stage",
+      "value": "I",
+      "direct_transition": "Onset_NSCLC"
+    },
+
+    "Set_Stage_II": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_stage",
+      "value": "II",
+      "direct_transition": "Onset_NSCLC"
+    },
+
+    "Set_Stage_III": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_stage",
+      "value": "III",
+      "direct_transition": "Onset_NSCLC"
+    },
+
+    "Set_Stage_IV": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_stage",
+      "value": "IV",
+      "direct_transition": "Onset_NSCLC"
+    },
+
+    "Onset_NSCLC": {
+      "type": "ConditionOnset",
+      "target_encounter": "Oncology_Encounter",
+      "assign_to_attribute": "nsclc_condition",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "254637007",
+          "display": "Non-small cell lung cancer (disorder)"
+        }
+      ],
+      "direct_transition": "Oncology_Encounter"
+    },
+
+    "Oncology_Encounter": {
+      "type": "Encounter",
+      "encounter_class": "ambulatory",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "185347001",
+          "display": "Encounter for problem (procedure)"
+        }
+      ],
+      "direct_transition": "Call_Histology"
+    },
+
+    "Call_Histology": {
+      "type": "CallSubmodule",
+      "submodule": "nsclc/nsclc_histology",
+      "direct_transition": "Call_Staging"
+    },
+
+    "Call_Staging": {
+      "type": "CallSubmodule",
+      "submodule": "nsclc/nsclc_staging",
+      "direct_transition": "Call_Tumor_Size"
+    },
+
+    "Call_Tumor_Size": {
+      "type": "CallSubmodule",
+      "submodule": "nsclc/nsclc_tumor_size",
+      "direct_transition": "Call_Lymph_Nodes"
+    },
+
+    "Call_Lymph_Nodes": {
+      "type": "CallSubmodule",
+      "submodule": "nsclc/nsclc_lymph_nodes",
+      "direct_transition": "Call_EGFR_Status"
+    },
+
+    "Call_EGFR_Status": {
+      "type": "CallSubmodule",
+      "submodule": "nsclc/nsclc_egfr_status",
+      "direct_transition": "Call_PDL1"
+    },
+
+    "Call_PDL1": {
+      "type": "CallSubmodule",
+      "submodule": "nsclc/nsclc_pdl1",
+      "direct_transition": "Call_Renal_Function"
+    },
+
+    "Call_Renal_Function": {
+      "type": "CallSubmodule",
+      "submodule": "nsclc/nsclc_renal_function",
+      "direct_transition": "Call_Platinum_History"
+    },
+
+    "Call_Platinum_History": {
+      "type": "CallSubmodule",
+      "submodule": "nsclc/nsclc_platinum_history",
+      "direct_transition": "Call_Drug_Interactions"
+    },
+
+    "Call_Drug_Interactions": {
+      "type": "CallSubmodule",
+      "submodule": "nsclc/nsclc_drug_interactions",
+      "direct_transition": "End_Oncology_Encounter"
+    },
+
+    "End_Oncology_Encounter": {
+      "type": "EncounterEnd",
+      "direct_transition": "Follow_Up_Delay"
+    },
+
+    "Follow_Up_Delay": {
+      "type": "Delay",
+      "exact": {
+        "quantity": 3,
+        "unit": "months"
+      },
+      "direct_transition": "Follow_Up_Encounter"
+    },
+
+    "Follow_Up_Encounter": {
+      "type": "Encounter",
+      "encounter_class": "ambulatory",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "185347001",
+          "display": "Encounter for problem (procedure)"
+        }
+      ],
+      "direct_transition": "Follow_Up_Renal_Function"
+    },
+
+    "Follow_Up_Renal_Function": {
+      "type": "CallSubmodule",
+      "submodule": "nsclc/nsclc_renal_function",
+      "direct_transition": "End_Follow_Up_Encounter"
+    },
+
+    "End_Follow_Up_Encounter": {
+      "type": "EncounterEnd",
+      "direct_transition": "Terminal"
+    },
+
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}
