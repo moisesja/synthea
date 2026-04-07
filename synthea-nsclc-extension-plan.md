@@ -80,6 +80,40 @@ synthea-nsclc/
 └── generate.sh                              # one-shot generation script
 ```
 
+### 3.1 Existing Oncology Modules (Reusable Templates)
+
+Two existing Synthea modules provide directly reusable patterns and should be studied before writing new module code:
+
+#### `src/main/resources/modules/veteran_lung_cancer.json` (1,079 lines)
+
+This is the closest existing module to our NSCLC extension. Key reusable elements:
+
+| Element | What to Reuse |
+|---------|---------------|
+| NSCLC ConditionOnset | SNOMED `254637007` with `assign_to_attribute` pattern |
+| Stage I–IV conditional transitions | Counter-based staging distribution; adapt for `DistributedTransition` |
+| Stage-specific SNOMED codes | `424132000` (I), `425048006` (II), `422968005` (III), `423121009` (IV) |
+| Cisplatin + Paclitaxel chemo | `MedicationOrder`/`MedicationEnd` pair pattern; RxNorm `1736854` (cisplatin), `583214` (paclitaxel) |
+| Diagnostic procedures | Bronchoscopy (`85765000`), needle biopsy (`432231006`), CT scan (`418891003`), sputum cytology (`167995008`) |
+
+**How to leverage:** Fork the NSCLC treatment path as the starting skeleton for `nsclc.json`. Replace the simple chemo loop with our submodule-based architecture, but preserve the `MedicationOrder`/`MedicationEnd` pairing pattern and the RxNorm codes.
+
+#### `src/main/resources/modules/breast_cancer/tnm_diagnosis.json` (657 lines)
+
+This module demonstrates the exact mCODE-aligned TNM Observation pattern our staging submodule needs:
+
+| Element | What to Reuse |
+|---------|---------------|
+| T Observations (LOINC 21905-5) | `Observation` states with `valueCodeableConcept` using SNOMED AJCC T0–T4 qualifier values |
+| N Observations (LOINC 21906-3) | SNOMED AJCC N0–N3 qualifier values |
+| M Observations (LOINC 21907-1) | SNOMED AJCC M0/M1 qualifier values |
+| Tumor size with range | `Observation` states using `range: { low, high }` and `unit: "cm"` per T-category |
+| Lymph node counts | `Observation` states with `range` for node counts, distributed transitions for N1 (1–3), N2 (4–9), N3 (10+) |
+
+**How to leverage:** Reuse the AJCC qualifier SNOMED codes verbatim (they are cancer-type-agnostic). Adapt the tumor size and lymph node count patterns, replacing breast-specific LOINCs (`33728-7`) with our NSCLC-specific ones where needed (`33756-8` for tumor size by CAP protocol).
+
+> **Implementation note:** Both modules use `gmf_version: 1` and follow identical state-machine conventions. All SNOMED AJCC qualifier value codes (e.g., `1228889001` for cT1, `1229973008` for cN1) are shared across cancer types and can be reused verbatim.
+
 ---
 
 ## 4. Parent Module: `nsclc.json` (Orchestrator)
@@ -149,9 +183,12 @@ For individual TNM components (T, N, M), add **three sibling `Observation` state
 - LOINC `21906-3` — Regional lymph nodes (N)
 - LOINC `21907-1` — Distant metastasis (M)
 
-Then reference them in a `DiagnosticReport` state that groups them under `21908-9`.
+**Do NOT wrap these in a `DiagnosticReport`.** The mCODE pattern (see `src/test/resources/flexporter/mcode.yml` lines 64–75) links T/N/M components directly to the stage-group Observation via `Observation.hasMember` references. The GMF module emits four sibling `Observation` states (T, N, M, and stage group). The Flexporter then wires the `hasMember` references on the stage-group Observation (21908-9) pointing to each T/N/M Observation, using the `set_values` action with `$findRef()`.
 
-**Flexporter layer:** Add the mCODE `TumorStageGroup` profile URL into `Observation.meta.profile` and add the `hasMember` references to T/N/M observations.
+**Flexporter layer responsibilities:**
+1. Apply the `mcode-tnm-clinical-stage-group` profile URL to `Observation.meta.profile` on the 21908-9 Observation (via `profiles:` action)
+2. Apply the individual TNM category profiles to the 21905-5, 21906-3, and 21907-1 Observations
+3. Set `Observation.hasMember` references on the stage-group Observation to point to the T/N/M Observations (via `set_values` action with `$findRef()`)
 
 ---
 
@@ -425,58 +462,76 @@ The post-processor also patches `Observation.interpretation` with a `valueCodeab
 `flexporter/nsclc_mcode_mappings.yml`:
 
 ```yaml
+---
 name: NSCLC mCODE Enrichment
-applies_to: Patient  # runs per-bundle
 
-mapping:
-  # Tag Patient with mCODE CancerPatient profile
-  - name: add_cancer_patient_profile
-    apply_to:
-      resourceType: Patient
-    set:
-      - path: meta.profile[0]
-        value: "http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-cancer-patient"
+# applicability uses a FHIRPath expression to filter which bundles this mapping applies to.
+# This matches any bundle containing an NSCLC Condition (SNOMED 254637007).
+applicability: Condition.code.coding.where($this.code = '254637007')
 
-  # Tag TNM Observation with mCODE profile + add coding for AJCC 8th edition
-  - name: enrich_tnm_staging
-    apply_to:
-      resourceType: Observation
-      filter:
-        - path: code.coding[0].code
-          value: "21908-9"
-    set:
-      - path: meta.profile[0]
-        value: "http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tnm-stage-group"
-      - path: method.coding[0].system
-        value: "http://snomed.info/sct"
-      - path: method.coding[0].code
-        value: "897275008"
-      - path: method.coding[0].display
-        value: "American Joint Commission on Cancer, Cancer Staging Manual, 8th edition"
+actions:
+  # 1. Apply mCODE profiles to matching resources
+  - name: Apply mCODE Profiles
+    profiles:
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-cancer-patient
+        applicability: Patient
 
-  # Add mCODE GenomicVariant profile to EGFR observation
-  - name: enrich_egfr_genomic_variant
-    apply_to:
-      resourceType: Observation
-      filter:
-        - path: code.coding[0].code
-          value: "69548-6"
-    set:
-      - path: meta.profile[0]
-        value: "http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-genomic-variant"
-      - path: component[0].code.coding[0].system
-        value: "http://loinc.org"
-      - path: component[0].code.coding[0].code
-        value: "48018-6"
-      - path: component[0].code.coding[0].display
-        value: "Gene studied [ID]"
-      - path: component[0].valueCodeableConcept.coding[0].system
-        value: "http://www.genenames.org/geneId"
-      - path: component[0].valueCodeableConcept.coding[0].code
-        value: "HGNC:3236"
-      - path: component[0].valueCodeableConcept.coding[0].display
-        value: "EGFR"
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tnm-clinical-stage-group
+        applicability: Observation.code.coding.where($this.code = '21908-9')
+
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tnm-clinical-primary-tumor-category
+        applicability: Observation.code.coding.where($this.code = '21905-5')
+
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tnm-clinical-regional-nodes-category
+        applicability: Observation.code.coding.where($this.code = '21906-3')
+
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tnm-clinical-distant-metastases-category
+        applicability: Observation.code.coding.where($this.code = '21907-1')
+
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-genomic-variant
+        applicability: Observation.code.coding.where($this.code = '69548-6')
+
+  # 2. Wire hasMember references on the TNM Stage Group observation
+  - name: Create TNM References
+    set_values:
+      - applicability: Observation.code.coding.where($this.code = '21908-9')
+        fields:
+          - location: Observation.hasMember.where(display='Tumor Category').reference
+            value: $findRef([Observation.code.coding.where($this.code = '21905-5')])
+          - location: Observation.hasMember.where(display='Nodes Category').reference
+            value: $findRef([Observation.code.coding.where($this.code = '21906-3')])
+          - location: Observation.hasMember.where(display='Metastases Category').reference
+            value: $findRef([Observation.code.coding.where($this.code = '21907-1')])
+
+  # 3. Add AJCC 8th edition staging method to TNM Stage Group
+  - name: Set Staging Method
+    set_values:
+      - applicability: Observation.code.coding.where($this.code = '21908-9')
+        fields:
+          - location: Observation.method.coding[0]
+            value:
+              system: http://snomed.info/sct
+              code: "897275008"
+              display: "American Joint Commission on Cancer, Cancer Staging Manual, 8th edition"
+
+  # 4. Add EGFR gene-studied component to the GenomicVariant observation
+  - name: Enrich EGFR Genomic Variant
+    set_values:
+      - applicability: Observation.code.coding.where($this.code = '69548-6')
+        fields:
+          - location: Observation.component[0].code.coding[0]
+            value:
+              system: http://loinc.org
+              code: "48018-6"
+              display: "Gene studied [ID]"
+          - location: Observation.component[0].valueCodeableConcept.coding[0]
+            value:
+              system: http://www.genenames.org/geneId
+              code: "HGNC:3236"
+              display: "EGFR"
 ```
+
+> **DSL reference:** This YAML uses the Flexporter DSL as implemented in this repo (see `src/test/resources/flexporter/mcode.yml`). Key keywords: `applicability` (FHIRPath), `actions`, `profiles`, `set_values`, `fields`, `location`, `value`, `$findRef()`.
 
 ---
 
@@ -507,12 +562,13 @@ requests               # HAPI FHIR POST
 
 ---
 
-## 8. Synthea Configuration (`synthea.properties`)
+## 8. Synthea Configuration (`synthea.properties`) and CLI Flags
+
+**Important:** Synthea does not support arbitrary config keys. The following settings are split into two categories: (a) valid `synthea.properties` overrides, and (b) CLI flags that must be passed to `run_synthea`.
+
+### 8a. Valid `synthea.properties` overrides
 
 ```properties
-# Demographic targeting — NSCLC skews older
-generate.demographics.default_age_range=50-80
-
 # FHIR R4 output
 exporter.fhir.export=true
 exporter.fhir.transaction_bundle=true
@@ -520,16 +576,21 @@ exporter.fhir.bulk_data=false
 exporter.fhir.use_us_core_ig=true
 exporter.fhir.us_core_version=6.1.0
 
-# Flexporter
-exporter.flexporter.mapping_file=flexporter/nsclc_mcode_mappings.yml
-
-# Run only NSCLC + core modules (suppresses unrelated module noise)
-# Note: -m flag on CLI overrides this for focused testing
+# Keep deceased patients in output (needed for late-stage NSCLC)
 generate.only_alive_patients=false
-
-# Increase observation cardinality for follow-up visits
-generate.follow_up_encounter_frequency_years=0.25
 ```
+
+### 8b. CLI flags (no property-file equivalent)
+
+| Flag | Value | Purpose |
+|------|-------|---------|
+| `-a` | `50-80` | Restrict generated patient ages to 50–80 (NSCLC demographic). **No `generate.demographics.default_age_range` property exists.** |
+| `-fm` | `flexporter/nsclc_mcode_mappings.yml` | Load the Flexporter mapping file. **No `exporter.flexporter.mapping_file` property exists.** |
+| `-m` | `nsclc` | Restrict to the NSCLC module and its dependencies |
+| `-p` | `1000` | Population size |
+| `-s` | `42` | Random seed for reproducibility |
+
+> **Note:** There is no `generate.follow_up_encounter_frequency_years` property in Synthea. Follow-up encounter frequency is controlled by the module's own `Delay` states between encounters (see Section 4, the follow-up loop in the parent module). Design the `nsclc.json` module with explicit 3-month `Delay` states to model quarterly follow-up.
 
 ---
 
@@ -636,13 +697,39 @@ echo "Done. $POPULATION NSCLC patients loaded."
 
 1. **Unit test each submodule in isolation** using `./run_synthea -p 10 -m submodules/nsclc_staging` and inspect the output FHIR bundle
 2. **Validate LOINC codes** against the LOINC browser before wiring — particularly ensure eGFR code `62238-1` vs the older `33914-3` (MDRD) distinction
-3. **Query smoke tests** for each endpoint after HAPI ingestion:
+3. **Query smoke tests** for all 9 endpoints after HAPI ingestion:
    ```
-   GET /fhir/Observation?code=21908-9&patient=[id]         # staging
-   GET /fhir/DiagnosticReport?code=22637-3&patient=[id]    # histology
-   GET /fhir/Observation?code=62238-1&patient=[id]         # eGFR
-   GET /fhir/Observation?code=69548-6&patient=[id]         # EGFR status
-   GET /fhir/MedicationRequest?patient=[id]&status=active  # drug list
+   # Endpoint 1: query_tumor_staging
+   GET /fhir/Observation?code=21908-9&patient=[id]                          # stage group
+   GET /fhir/Observation?code=21905-5&patient=[id]                          # T category
+   GET /fhir/Observation?code=21906-3&patient=[id]                          # N category
+   GET /fhir/Observation?code=21907-1&patient=[id]                          # M category
+
+   # Endpoint 2: query_histology
+   GET /fhir/DiagnosticReport?code=22637-3&patient=[id]                     # pathology report
+
+   # Endpoint 3: query_tumor_size
+   GET /fhir/Observation?code=33756-8&patient=[id]                          # tumor size (CAP)
+
+   # Endpoint 4: query_lymph_nodes
+   GET /fhir/Observation?code=21893-3&patient=[id]                          # lymph nodes examined
+   GET /fhir/Observation?code=21894-1&patient=[id]                          # lymph nodes positive
+
+   # Endpoint 5: query_prior_platinum
+   GET /fhir/MedicationRequest?code=40048&patient=[id]&status=completed     # carboplatin
+   GET /fhir/MedicationRequest?code=33014&patient=[id]&status=completed     # cisplatin
+
+   # Endpoint 6: query_renal_function
+   GET /fhir/Observation?code=62238-1&patient=[id]                          # eGFR
+
+   # Endpoint 7: query_drug_interactions
+   GET /fhir/MedicationRequest?patient=[id]&status=active                   # active medications
+
+   # Endpoint 8: query_egfr_status
+   GET /fhir/Observation?code=69548-6&patient=[id]                          # EGFR variant
+
+   # Endpoint 9: query_pdl1_expr
+   GET /fhir/Observation?code=85319-2&patient=[id]                          # PD-L1 TPS
    ```
 4. **Distribution validation**: after generating 1,000 patients, assert ~15% are EGFR+, ~30% have PD-L1 ≥50%, staging distribution matches SEER data
 
