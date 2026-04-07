@@ -57,7 +57,7 @@ synthea-nsclc/
 ├── src/main/resources/
 │   └── modules/
 │       ├── nsclc.json                        # top-level orchestrator module
-│       └── submodules/
+│       └── nsclc/                            # submodule directory (matches breast_cancer/ convention)
 │           ├── nsclc_staging.json            # TNM staging (Endpoint 1)
 │           ├── nsclc_histology.json          # Pathology DiagnosticReport (Endpoint 2)
 │           ├── nsclc_tumor_size.json         # Tumor size Observation (Endpoint 3)
@@ -700,10 +700,10 @@ Both agents work simultaneously on their assigned submodules. **No shared files 
 
 | Step | Deliverable | File | Depends On |
 |------|-------------|------|------------|
-| A1.1 | TNM staging submodule | `src/main/resources/modules/submodules/nsclc_staging.json` | Parent module (reads `nsclc_stage`; sets `nsclc_t_stage`, `nsclc_n_stage`) |
-| A1.2 | Histology submodule | `src/main/resources/modules/submodules/nsclc_histology.json` | Parent module (reads `nsclc_histology_subtype`) |
-| A1.3 | Tumor size submodule | `src/main/resources/modules/submodules/nsclc_tumor_size.json` | A1.1 (reads `nsclc_t_stage`) |
-| A1.4 | Lymph node count submodule | `src/main/resources/modules/submodules/nsclc_lymph_nodes.json` | A1.1 (reads `nsclc_n_stage`) |
+| A1.1 | TNM staging submodule | `src/main/resources/modules/nsclc/nsclc_staging.json` | Parent module (reads `nsclc_stage`; sets `nsclc_t_stage`, `nsclc_n_stage`) |
+| A1.2 | Histology submodule | `src/main/resources/modules/nsclc/nsclc_histology.json` | Parent module (reads `nsclc_histology_subtype`) |
+| A1.3 | Tumor size submodule | `src/main/resources/modules/nsclc/nsclc_tumor_size.json` | A1.1 (reads `nsclc_t_stage`) |
+| A1.4 | Lymph node count submodule | `src/main/resources/modules/nsclc/nsclc_lymph_nodes.json` | A1.1 (reads `nsclc_n_stage`) |
 | A1.5 | Staging Flexporter actions | `flexporter/nsclc_staging_profiles.yml` | A1.1 complete |
 | A1.6 | Validate Endpoints 1–4 in isolation | `./run_synthea -p 10 -m nsclc -fm flexporter/nsclc_staging_profiles.yml` | A1.1–A1.5 |
 
@@ -722,11 +722,11 @@ Both agents work simultaneously on their assigned submodules. **No shared files 
 
 | Step | Deliverable | File | Depends On |
 |------|-------------|------|------------|
-| B1.1 | EGFR status submodule | `src/main/resources/modules/submodules/nsclc_egfr_status.json` | Parent module (reads `nsclc_histology_subtype`; sets `nsclc_egfr_positive`, `nsclc_egfr_mutation_subtype`) |
-| B1.2 | PD-L1 expression submodule | `src/main/resources/modules/submodules/nsclc_pdl1.json` | Parent module (sets `nsclc_pdl1_tps_category`) |
-| B1.3 | Renal function submodule | `src/main/resources/modules/submodules/nsclc_renal_function.json` | None (independent) |
-| B1.4 | Platinum history submodule | `src/main/resources/modules/submodules/nsclc_platinum_history.json` | Parent module (reads `nsclc_stage`; sets `nsclc_prior_platinum`) |
-| B1.5 | Drug interactions submodule | `src/main/resources/modules/submodules/nsclc_drug_interactions.json` | B1.1, B1.2, B1.4 (reads `nsclc_egfr_positive`, `nsclc_pdl1_tps_category`, `nsclc_prior_platinum`, `nsclc_stage`) |
+| B1.1 | EGFR status submodule | `src/main/resources/modules/nsclc/nsclc_egfr_status.json` | Parent module (reads `nsclc_histology_subtype`; sets `nsclc_egfr_positive`, `nsclc_egfr_mutation_subtype`) |
+| B1.2 | PD-L1 expression submodule | `src/main/resources/modules/nsclc/nsclc_pdl1.json` | Parent module (sets `nsclc_pdl1_tps_category`) |
+| B1.3 | Renal function submodule | `src/main/resources/modules/nsclc/nsclc_renal_function.json` | None (independent) |
+| B1.4 | Platinum history submodule | `src/main/resources/modules/nsclc/nsclc_platinum_history.json` | Parent module (reads `nsclc_stage`; sets `nsclc_prior_platinum`) |
+| B1.5 | Drug interactions submodule | `src/main/resources/modules/nsclc/nsclc_drug_interactions.json` | B1.1, B1.2, B1.4 (reads `nsclc_egfr_positive`, `nsclc_pdl1_tps_category`, `nsclc_prior_platinum`, `nsclc_stage`) |
 | B1.6 | Biomarker Flexporter actions | `flexporter/nsclc_biomarker_treatment.yml` | B1.1 complete |
 | B1.7 | Validate Endpoints 5–9 in isolation | `./run_synthea -p 10 -m nsclc -fm flexporter/nsclc_biomarker_treatment.yml` | B1.1–B1.6 |
 
@@ -817,7 +817,7 @@ Agent Beta  │ Review   │───▶│ Biomarkers + Treat.  │──▶│
 
 ## 13. Recommended Testing Strategy
 
-1. **Unit test each submodule in isolation** using `./run_synthea -p 10 -m submodules/nsclc_staging` and inspect the output FHIR bundle
+1. **Unit test each submodule in isolation** using `./run_synthea -p 10 -m nsclc/nsclc_staging` and inspect the output FHIR bundle
 2. **Validate LOINC codes** against the LOINC browser before wiring — particularly ensure eGFR code `62238-1` vs the older `33914-3` (MDRD) distinction
 3. **Query smoke tests** for all 9 endpoints after HAPI ingestion:
    ```
