@@ -1,0 +1,545 @@
+{
+  "name": "NSCLC_Staging",
+  "remarks": [
+    "TNM staging submodule for Non-Small Cell Lung Cancer.",
+    "Reads nsclc_stage (I/II/III/IV) from parent module.",
+    "Sets nsclc_t_stage (T1–T4) and nsclc_n_stage (N0–N3).",
+    "Emits four Observations: T (21905-5), N (21906-3), M (21907-1), Stage Group (21908-9).",
+    "",
+    "AJCC SNOMED qualifier codes reused from breast_cancer/tnm_diagnosis.json (cancer-type-agnostic).",
+    "Stage group codes from veteran_lung_cancer.json (NSCLC-specific).",
+    "T/N/M distributions per stage approximate AJCC 8th edition NSCLC patterns.",
+    "",
+    "Sources:",
+    "  AJCC Cancer Staging Manual, 8th Edition",
+    "  SEER Cancer Statistics Review: https://seer.cancer.gov/statfacts/html/lungb.html"
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "Stage_Branch"
+    },
+
+    "Stage_Branch": {
+      "type": "Simple",
+      "remarks": [
+        "Route to T-category distribution based on overall stage set by parent module."
+      ],
+      "conditional_transition": [
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_stage",
+            "operator": "==",
+            "value": "I"
+          },
+          "transition": "T_Dist_Stage_I"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_stage",
+            "operator": "==",
+            "value": "II"
+          },
+          "transition": "T_Dist_Stage_II"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_stage",
+            "operator": "==",
+            "value": "III"
+          },
+          "transition": "T_Dist_Stage_III"
+        },
+        {
+          "transition": "T_Dist_Stage_IV"
+        }
+      ]
+    },
+
+    "T_Dist_Stage_I": {
+      "type": "Simple",
+      "remarks": ["Stage I: predominantly small tumors (T1 60%, T2 40%)"],
+      "distributed_transition": [
+        { "distribution": 0.60, "transition": "Set_T1" },
+        { "distribution": 0.40, "transition": "Set_T2" }
+      ]
+    },
+
+    "T_Dist_Stage_II": {
+      "type": "Simple",
+      "remarks": ["Stage II: mixed tumor sizes (T1 30%, T2 40%, T3 30%)"],
+      "distributed_transition": [
+        { "distribution": 0.30, "transition": "Set_T1" },
+        { "distribution": 0.40, "transition": "Set_T2" },
+        { "distribution": 0.30, "transition": "Set_T3" }
+      ]
+    },
+
+    "T_Dist_Stage_III": {
+      "type": "Simple",
+      "remarks": ["Stage III: larger tumors (T2 20%, T3 40%, T4 40%)"],
+      "distributed_transition": [
+        { "distribution": 0.20, "transition": "Set_T2" },
+        { "distribution": 0.40, "transition": "Set_T3" },
+        { "distribution": 0.40, "transition": "Set_T4" }
+      ]
+    },
+
+    "T_Dist_Stage_IV": {
+      "type": "Simple",
+      "remarks": ["Stage IV: predominantly large tumors (T2 20%, T3 30%, T4 50%)"],
+      "distributed_transition": [
+        { "distribution": 0.20, "transition": "Set_T2" },
+        { "distribution": 0.30, "transition": "Set_T3" },
+        { "distribution": 0.50, "transition": "Set_T4" }
+      ]
+    },
+
+    "Set_T1": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_t_stage",
+      "value": "T1",
+      "direct_transition": "T1_Obs"
+    },
+
+    "Set_T2": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_t_stage",
+      "value": "T2",
+      "direct_transition": "T2_Obs"
+    },
+
+    "Set_T3": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_t_stage",
+      "value": "T3",
+      "direct_transition": "T3_Obs"
+    },
+
+    "Set_T4": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_t_stage",
+      "value": "T4",
+      "direct_transition": "T4_Obs"
+    },
+
+    "T1_Obs": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21905-5",
+          "display": "Primary tumor.clinical [Class] Cancer"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "1228889001",
+        "display": "American Joint Committee on Cancer cT1 (qualifier value)"
+      },
+      "direct_transition": "N_Dist_by_Stage"
+    },
+
+    "T2_Obs": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21905-5",
+          "display": "Primary tumor.clinical [Class] Cancer"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "1228929004",
+        "display": "American Joint Committee on Cancer cT2 (qualifier value)"
+      },
+      "direct_transition": "N_Dist_by_Stage"
+    },
+
+    "T3_Obs": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21905-5",
+          "display": "Primary tumor.clinical [Class] Cancer"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "1228938002",
+        "display": "American Joint Committee on Cancer cT3 (qualifier value)"
+      },
+      "direct_transition": "N_Dist_by_Stage"
+    },
+
+    "T4_Obs": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21905-5",
+          "display": "Primary tumor.clinical [Class] Cancer"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "1228944003",
+        "display": "American Joint Committee on Cancer cT4 (qualifier value)"
+      },
+      "direct_transition": "N_Dist_by_Stage"
+    },
+
+    "N_Dist_by_Stage": {
+      "type": "Simple",
+      "remarks": [
+        "N-category distribution varies by overall stage.",
+        "Uses complex_transition to combine condition + distribution (same pattern as tnm_diagnosis.json N Marker)."
+      ],
+      "complex_transition": [
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_stage",
+            "operator": "==",
+            "value": "I"
+          },
+          "transition": "Set_N0"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_stage",
+            "operator": "==",
+            "value": "II"
+          },
+          "distributions": [
+            { "distribution": 0.40, "transition": "Set_N0" },
+            { "distribution": 0.60, "transition": "Set_N1" }
+          ]
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_stage",
+            "operator": "==",
+            "value": "III"
+          },
+          "distributions": [
+            { "distribution": 0.30, "transition": "Set_N1" },
+            { "distribution": 0.40, "transition": "Set_N2" },
+            { "distribution": 0.30, "transition": "Set_N3" }
+          ]
+        },
+        {
+          "distributions": [
+            { "distribution": 0.10, "transition": "Set_N0" },
+            { "distribution": 0.20, "transition": "Set_N1" },
+            { "distribution": 0.30, "transition": "Set_N2" },
+            { "distribution": 0.40, "transition": "Set_N3" }
+          ]
+        }
+      ]
+    },
+
+    "Set_N0": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_n_stage",
+      "value": "N0",
+      "direct_transition": "N0_Obs"
+    },
+
+    "Set_N1": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_n_stage",
+      "value": "N1",
+      "direct_transition": "N1_Obs"
+    },
+
+    "Set_N2": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_n_stage",
+      "value": "N2",
+      "direct_transition": "N2_Obs"
+    },
+
+    "Set_N3": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_n_stage",
+      "value": "N3",
+      "direct_transition": "N3_Obs"
+    },
+
+    "N0_Obs": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21906-3",
+          "display": "Regional lymph nodes.clinical [Class] Cancer"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "1229967007",
+        "display": "American Joint Committee on Cancer cN0 (qualifier value)"
+      },
+      "direct_transition": "M_Dist_by_Stage"
+    },
+
+    "N1_Obs": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21906-3",
+          "display": "Regional lymph nodes.clinical [Class] Cancer"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "1229973008",
+        "display": "American Joint Committee on Cancer cN1 (qualifier value)"
+      },
+      "direct_transition": "M_Dist_by_Stage"
+    },
+
+    "N2_Obs": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21906-3",
+          "display": "Regional lymph nodes.clinical [Class] Cancer"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "1229978004",
+        "display": "American Joint Committee on Cancer cN2 (qualifier value)"
+      },
+      "direct_transition": "M_Dist_by_Stage"
+    },
+
+    "N3_Obs": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21906-3",
+          "display": "Regional lymph nodes.clinical [Class] Cancer"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "1229984001",
+        "display": "American Joint Committee on Cancer cN3 (qualifier value)"
+      },
+      "direct_transition": "M_Dist_by_Stage"
+    },
+
+    "M_Dist_by_Stage": {
+      "type": "Simple",
+      "remarks": [
+        "Metastasis: Stages I-III are M0 (no distant metastasis).",
+        "Stage IV: 90% M1, 10% M0 (rare reclassification cases)."
+      ],
+      "complex_transition": [
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_stage",
+            "operator": "==",
+            "value": "IV"
+          },
+          "distributions": [
+            { "distribution": 0.10, "transition": "M0_Obs" },
+            { "distribution": 0.90, "transition": "M1_Obs" }
+          ]
+        },
+        {
+          "transition": "M0_Obs"
+        }
+      ]
+    },
+
+    "M0_Obs": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21907-1",
+          "display": "Distant metastases.clinical [Class] Cancer"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "1229901006",
+        "display": "American Joint Committee on Cancer cM0 (qualifier value)"
+      },
+      "direct_transition": "Stage_Group_by_Stage"
+    },
+
+    "M1_Obs": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21907-1",
+          "display": "Distant metastases.clinical [Class] Cancer"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "1229903009",
+        "display": "American Joint Committee on Cancer cM1 (qualifier value)"
+      },
+      "direct_transition": "Stage_Group_by_Stage"
+    },
+
+    "Stage_Group_by_Stage": {
+      "type": "Simple",
+      "remarks": [
+        "Route to the appropriate stage group Observation based on nsclc_stage.",
+        "Stage group codes are NSCLC-specific SNOMED codes from veteran_lung_cancer.json."
+      ],
+      "conditional_transition": [
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_stage",
+            "operator": "==",
+            "value": "I"
+          },
+          "transition": "Stage_I_Group_Obs"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_stage",
+            "operator": "==",
+            "value": "II"
+          },
+          "transition": "Stage_II_Group_Obs"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_stage",
+            "operator": "==",
+            "value": "III"
+          },
+          "transition": "Stage_III_Group_Obs"
+        },
+        {
+          "transition": "Stage_IV_Group_Obs"
+        }
+      ]
+    },
+
+    "Stage_I_Group_Obs": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21908-9",
+          "display": "Stage group.clinical Cancer"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "424132000",
+        "display": "Non-small cell carcinoma of lung, TNM stage 1 (disorder)"
+      },
+      "direct_transition": "Terminal"
+    },
+
+    "Stage_II_Group_Obs": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21908-9",
+          "display": "Stage group.clinical Cancer"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "425048006",
+        "display": "Non-small cell carcinoma of lung, TNM stage 2 (disorder)"
+      },
+      "direct_transition": "Terminal"
+    },
+
+    "Stage_III_Group_Obs": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21908-9",
+          "display": "Stage group.clinical Cancer"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "422968005",
+        "display": "Non-small cell carcinoma of lung, TNM stage 3 (disorder)"
+      },
+      "direct_transition": "Terminal"
+    },
+
+    "Stage_IV_Group_Obs": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21908-9",
+          "display": "Stage group.clinical Cancer"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "423121009",
+        "display": "Non-small cell carcinoma of lung, TNM stage 4 (disorder)"
+      },
+      "direct_transition": "Terminal"
+    },
+
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}

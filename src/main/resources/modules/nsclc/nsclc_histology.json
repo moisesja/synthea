@@ -1,0 +1,182 @@
+{
+  "name": "NSCLC_Histology",
+  "remarks": [
+    "Histology/morphology submodule for Non-Small Cell Lung Cancer.",
+    "Reads nsclc_histology_subtype from parent module.",
+    "Emits a DiagnosticReport (LOINC 22637-3) with nested histology Observation (LOINC 59847-4).",
+    "",
+    "Sources:",
+    "  WHO Classification of Tumors of the Lung, 5th Edition (2021)",
+    "  ICD-O-3 Morphology codes mapped to SNOMED CT"
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "Histology_Branch"
+    },
+
+    "Histology_Branch": {
+      "type": "Simple",
+      "remarks": [
+        "Branch to appropriate DiagnosticReport based on histology subtype set by parent module."
+      ],
+      "conditional_transition": [
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_histology_subtype",
+            "operator": "==",
+            "value": "adenocarcinoma"
+          },
+          "transition": "DR_Adenocarcinoma"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_histology_subtype",
+            "operator": "==",
+            "value": "squamous"
+          },
+          "transition": "DR_Squamous"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_histology_subtype",
+            "operator": "==",
+            "value": "large_cell"
+          },
+          "transition": "DR_LargeCell"
+        },
+        {
+          "transition": "DR_NOS"
+        }
+      ]
+    },
+
+    "DR_Adenocarcinoma": {
+      "type": "DiagnosticReport",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "22637-3",
+          "display": "Pathology report final diagnosis Narrative"
+        }
+      ],
+      "observations": [
+        {
+          "category": "laboratory",
+          "unit": "",
+          "codes": [
+            {
+              "system": "LOINC",
+              "code": "59847-4",
+              "display": "Histology and Behavior ICD-O-3 Cancer"
+            }
+          ],
+          "value_code": {
+            "system": "SNOMED-CT",
+            "code": "41607009",
+            "display": "Adenocarcinoma of lung (disorder)"
+          }
+        }
+      ],
+      "direct_transition": "Terminal"
+    },
+
+    "DR_Squamous": {
+      "type": "DiagnosticReport",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "22637-3",
+          "display": "Pathology report final diagnosis Narrative"
+        }
+      ],
+      "observations": [
+        {
+          "category": "laboratory",
+          "unit": "",
+          "codes": [
+            {
+              "system": "LOINC",
+              "code": "59847-4",
+              "display": "Histology and Behavior ICD-O-3 Cancer"
+            }
+          ],
+          "value_code": {
+            "system": "SNOMED-CT",
+            "code": "28899001",
+            "display": "Squamous cell carcinoma of lung (disorder)"
+          }
+        }
+      ],
+      "direct_transition": "Terminal"
+    },
+
+    "DR_LargeCell": {
+      "type": "DiagnosticReport",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "22637-3",
+          "display": "Pathology report final diagnosis Narrative"
+        }
+      ],
+      "observations": [
+        {
+          "category": "laboratory",
+          "unit": "",
+          "codes": [
+            {
+              "system": "LOINC",
+              "code": "59847-4",
+              "display": "Histology and Behavior ICD-O-3 Cancer"
+            }
+          ],
+          "value_code": {
+            "system": "SNOMED-CT",
+            "code": "22694002",
+            "display": "Large cell carcinoma (morphologic abnormality)"
+          }
+        }
+      ],
+      "direct_transition": "Terminal"
+    },
+
+    "DR_NOS": {
+      "type": "DiagnosticReport",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "22637-3",
+          "display": "Pathology report final diagnosis Narrative"
+        }
+      ],
+      "observations": [
+        {
+          "category": "laboratory",
+          "unit": "",
+          "codes": [
+            {
+              "system": "LOINC",
+              "code": "59847-4",
+              "display": "Histology and Behavior ICD-O-3 Cancer"
+            }
+          ],
+          "value_code": {
+            "system": "SNOMED-CT",
+            "code": "128633003",
+            "display": "Non-small cell carcinoma (morphologic abnormality)"
+          }
+        }
+      ],
+      "direct_transition": "Terminal"
+    },
+
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}

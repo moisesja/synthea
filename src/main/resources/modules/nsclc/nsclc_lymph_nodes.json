@@ -1,0 +1,218 @@
+{
+  "name": "NSCLC_Lymph_Nodes",
+  "remarks": [
+    "Lymph node count submodule for Non-Small Cell Lung Cancer.",
+    "Reads nsclc_n_stage (N0–N3) set by nsclc_staging submodule.",
+    "Emits two sibling Observations:",
+    "  - LOINC 21893-3: Regional lymph nodes examined (total count)",
+    "  - LOINC 21894-1: Regional lymph nodes positive (metastatic count)",
+    "",
+    "Positive count never exceeds examined count by construction",
+    "(max positive range < min examined range for each N category).",
+    "",
+    "Sources:",
+    "  AJCC Cancer Staging Manual, 8th Edition",
+    "  NCCN NSCLC Guidelines v4.2024"
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "N_Stage_Branch"
+    },
+
+    "N_Stage_Branch": {
+      "type": "Simple",
+      "remarks": [
+        "Route to examined/positive count ranges based on N-stage.",
+        "N0: 0 positive, N1: 1-3, N2: 4-9, N3: 10+"
+      ],
+      "conditional_transition": [
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_n_stage",
+            "operator": "==",
+            "value": "N0"
+          },
+          "transition": "Examined_N0"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_n_stage",
+            "operator": "==",
+            "value": "N1"
+          },
+          "transition": "Examined_N1"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_n_stage",
+            "operator": "==",
+            "value": "N2"
+          },
+          "transition": "Examined_N2"
+        },
+        {
+          "transition": "Examined_N3"
+        }
+      ]
+    },
+
+    "Examined_N0": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "{#}",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21893-3",
+          "display": "Regional lymph nodes examined [#] Specimen"
+        }
+      ],
+      "range": {
+        "decimals": 0,
+        "low": 10,
+        "high": 20
+      },
+      "direct_transition": "Positive_N0"
+    },
+
+    "Positive_N0": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "{#}",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21894-1",
+          "display": "Regional lymph nodes positive [#] Specimen"
+        }
+      ],
+      "exact": {
+        "quantity": 0
+      },
+      "direct_transition": "Terminal"
+    },
+
+    "Examined_N1": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "{#}",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21893-3",
+          "display": "Regional lymph nodes examined [#] Specimen"
+        }
+      ],
+      "range": {
+        "decimals": 0,
+        "low": 10,
+        "high": 20
+      },
+      "direct_transition": "Positive_N1"
+    },
+
+    "Positive_N1": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "{#}",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21894-1",
+          "display": "Regional lymph nodes positive [#] Specimen"
+        }
+      ],
+      "range": {
+        "decimals": 0,
+        "low": 1,
+        "high": 3
+      },
+      "direct_transition": "Terminal"
+    },
+
+    "Examined_N2": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "{#}",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21893-3",
+          "display": "Regional lymph nodes examined [#] Specimen"
+        }
+      ],
+      "range": {
+        "decimals": 0,
+        "low": 15,
+        "high": 25
+      },
+      "direct_transition": "Positive_N2"
+    },
+
+    "Positive_N2": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "{#}",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21894-1",
+          "display": "Regional lymph nodes positive [#] Specimen"
+        }
+      ],
+      "range": {
+        "decimals": 0,
+        "low": 4,
+        "high": 9
+      },
+      "direct_transition": "Terminal"
+    },
+
+    "Examined_N3": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "{#}",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21893-3",
+          "display": "Regional lymph nodes examined [#] Specimen"
+        }
+      ],
+      "range": {
+        "decimals": 0,
+        "low": 20,
+        "high": 30
+      },
+      "direct_transition": "Positive_N3"
+    },
+
+    "Positive_N3": {
+      "type": "Observation",
+      "category": "imaging",
+      "unit": "{#}",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "21894-1",
+          "display": "Regional lymph nodes positive [#] Specimen"
+        }
+      ],
+      "range": {
+        "decimals": 0,
+        "low": 10,
+        "high": 20
+      },
+      "direct_transition": "Terminal"
+    },
+
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}

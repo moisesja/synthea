@@ -1,0 +1,166 @@
+{
+  "name": "nsclc_renal_function",
+  "remarks": [
+    "Beta-owned Phase 1 submodule for eGFR measurements.",
+    "Uses a lower distribution on follow-up if prior platinum exposure has already been modeled."
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "conditional_transition": [
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_prior_platinum",
+            "operator": "==",
+            "value": true
+          },
+          "transition": "Post_Platinum_Distribution"
+        },
+        {
+          "transition": "Baseline_Distribution"
+        }
+      ]
+    },
+    "Baseline_Distribution": {
+      "type": "Simple",
+      "distributed_transition": [
+        {
+          "distribution": 0.65,
+          "transition": "Observation_eGFR_Baseline_High"
+        },
+        {
+          "distribution": 0.20,
+          "transition": "Observation_eGFR_Baseline_Borderline"
+        },
+        {
+          "distribution": 0.15,
+          "transition": "Observation_eGFR_Baseline_Low"
+        }
+      ]
+    },
+    "Post_Platinum_Distribution": {
+      "type": "Simple",
+      "distributed_transition": [
+        {
+          "distribution": 0.40,
+          "transition": "Observation_eGFR_PostPlatinum_High"
+        },
+        {
+          "distribution": 0.35,
+          "transition": "Observation_eGFR_PostPlatinum_Borderline"
+        },
+        {
+          "distribution": 0.25,
+          "transition": "Observation_eGFR_PostPlatinum_Low"
+        }
+      ]
+    },
+    "Observation_eGFR_Baseline_High": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "62238-1",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted [Volume Rate/Area] in Serum, Plasma or Blood by CKD-EPI 2021"
+        }
+      ],
+      "unit": "mL/min/{1.73_m2}",
+      "range": {
+        "low": 60,
+        "high": 100
+      },
+      "direct_transition": "Terminal"
+    },
+    "Observation_eGFR_Baseline_Borderline": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "62238-1",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted [Volume Rate/Area] in Serum, Plasma or Blood by CKD-EPI 2021"
+        }
+      ],
+      "unit": "mL/min/{1.73_m2}",
+      "range": {
+        "low": 45,
+        "high": 59
+      },
+      "direct_transition": "Terminal"
+    },
+    "Observation_eGFR_Baseline_Low": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "62238-1",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted [Volume Rate/Area] in Serum, Plasma or Blood by CKD-EPI 2021"
+        }
+      ],
+      "unit": "mL/min/{1.73_m2}",
+      "range": {
+        "low": 30,
+        "high": 44
+      },
+      "direct_transition": "Terminal"
+    },
+    "Observation_eGFR_PostPlatinum_High": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "62238-1",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted [Volume Rate/Area] in Serum, Plasma or Blood by CKD-EPI 2021"
+        }
+      ],
+      "unit": "mL/min/{1.73_m2}",
+      "range": {
+        "low": 50,
+        "high": 80
+      },
+      "direct_transition": "Terminal"
+    },
+    "Observation_eGFR_PostPlatinum_Borderline": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "62238-1",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted [Volume Rate/Area] in Serum, Plasma or Blood by CKD-EPI 2021"
+        }
+      ],
+      "unit": "mL/min/{1.73_m2}",
+      "range": {
+        "low": 40,
+        "high": 59
+      },
+      "direct_transition": "Terminal"
+    },
+    "Observation_eGFR_PostPlatinum_Low": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "62238-1",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted [Volume Rate/Area] in Serum, Plasma or Blood by CKD-EPI 2021"
+        }
+      ],
+      "unit": "mL/min/{1.73_m2}",
+      "range": {
+        "low": 25,
+        "high": 44
+      },
+      "direct_transition": "Terminal"
+    },
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}

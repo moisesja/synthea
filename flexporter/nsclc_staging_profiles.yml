@@ -1,0 +1,51 @@
+---
+# NSCLC Staging mCODE Profiles
+# Agent Alpha — Endpoints 1–4 (staging & morphology)
+#
+# Applies mCODE STU3 profiles to TNM staging Observations and wires
+# hasMember references on the stage-group Observation.
+#
+# DSL reference: src/test/resources/flexporter/mcode.yml
+
+name: NSCLC Staging mCODE Profiles
+
+applicability: Condition.code.coding.where($this.code = '254637007')
+
+actions:
+  - name: Apply mCODE Profiles
+    profiles:
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-cancer-patient
+        applicability: Patient
+
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tnm-clinical-stage-group
+        applicability: Observation.code.coding.where($this.code = '21908-9')
+
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tnm-clinical-primary-tumor-category
+        applicability: Observation.code.coding.where($this.code = '21905-5')
+
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tnm-clinical-regional-nodes-category
+        applicability: Observation.code.coding.where($this.code = '21906-3')
+
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tnm-clinical-distant-metastases-category
+        applicability: Observation.code.coding.where($this.code = '21907-1')
+
+  - name: Create TNM References
+    set_values:
+      - applicability: Observation.code.coding.where($this.code = '21908-9')
+        fields:
+          - location: Observation.hasMember.where(display='Tumor Category').reference
+            value: $findRef([Observation.code.coding.where($this.code = '21905-5')])
+          - location: Observation.hasMember.where(display='Nodes Category').reference
+            value: $findRef([Observation.code.coding.where($this.code = '21906-3')])
+          - location: Observation.hasMember.where(display='Metastases Category').reference
+            value: $findRef([Observation.code.coding.where($this.code = '21907-1')])
+
+  - name: Set Staging Method
+    set_values:
+      - applicability: Observation.code.coding.where($this.code = '21908-9')
+        fields:
+          - location: Observation.method.coding[0]
+            value:
+              system: http://snomed.info/sct
+              code: "897275008"
+              display: "American Joint Commission on Cancer, Cancer Staging Manual, 8th edition"

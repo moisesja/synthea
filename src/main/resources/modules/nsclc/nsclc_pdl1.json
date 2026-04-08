@@ -1,0 +1,106 @@
+{
+  "name": "nsclc_pdl1",
+  "remarks": [
+    "Beta-owned Phase 1 submodule for PD-L1 tumor proportion score.",
+    "Sets nsclc_pdl1_tps_category for downstream treatment selection."
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "PDL1_Distribution"
+    },
+    "PDL1_Distribution": {
+      "type": "Simple",
+      "remarks": [
+        "Synthetic approximation of negative, intermediate, and high PD-L1 expression."
+      ],
+      "distributed_transition": [
+        {
+          "distribution": 0.40,
+          "transition": "Set_PDL1_Negative"
+        },
+        {
+          "distribution": 0.30,
+          "transition": "Set_PDL1_Intermediate"
+        },
+        {
+          "distribution": 0.30,
+          "transition": "Set_PDL1_High"
+        }
+      ]
+    },
+    "Set_PDL1_Negative": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_pdl1_tps_category",
+      "value": "negative",
+      "direct_transition": "Observation_PDL1_Negative"
+    },
+    "Set_PDL1_Intermediate": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_pdl1_tps_category",
+      "value": "intermediate",
+      "direct_transition": "Observation_PDL1_Intermediate"
+    },
+    "Set_PDL1_High": {
+      "type": "SetAttribute",
+      "attribute": "nsclc_pdl1_tps_category",
+      "value": "high",
+      "direct_transition": "Observation_PDL1_High"
+    },
+    "Observation_PDL1_Negative": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "85319-2",
+          "display": "PD-L1 [Presence] in Tissue by Immune stain"
+        }
+      ],
+      "unit": "%",
+      "range": {
+        "low": 0,
+        "high": 1
+      },
+      "direct_transition": "Terminal"
+    },
+    "Observation_PDL1_Intermediate": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "85319-2",
+          "display": "PD-L1 [Presence] in Tissue by Immune stain"
+        }
+      ],
+      "unit": "%",
+      "range": {
+        "low": 1,
+        "high": 49
+      },
+      "direct_transition": "Terminal"
+    },
+    "Observation_PDL1_High": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "85319-2",
+          "display": "PD-L1 [Presence] in Tissue by Immune stain"
+        }
+      ],
+      "unit": "%",
+      "range": {
+        "low": 50,
+        "high": 100
+      },
+      "direct_transition": "Terminal"
+    },
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}

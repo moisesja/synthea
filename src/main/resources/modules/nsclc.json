@@ -19,15 +19,19 @@
   "states": {
     "Initial": {
       "type": "Initial",
-      "direct_transition": "Age_Guard"
+      "direct_transition": "Age_Delay"
     },
 
-    "Age_Guard": {
-      "type": "Guard",
-      "allow": {
-        "condition_type": "Age",
-        "operator": ">=",
-        "quantity": 45,
+    "Age_Delay": {
+      "type": "Delay",
+      "remarks": [
+        "NSCLC diagnosis age range. Median age at diagnosis is ~70 (SEER).",
+        "Range 55-80 reflects realistic onset and keeps most encounters",
+        "within the default exporter.years_of_history=10 window."
+      ],
+      "range": {
+        "low": 55,
+        "high": 80,
         "unit": "years"
       },
       "direct_transition": "Histology_Distribution"
@@ -202,18 +206,18 @@
     "Call_PDL1": {
       "type": "CallSubmodule",
       "submodule": "nsclc/nsclc_pdl1",
-      "direct_transition": "Call_Renal_Function"
-    },
-
-    "Call_Renal_Function": {
-      "type": "CallSubmodule",
-      "submodule": "nsclc/nsclc_renal_function",
       "direct_transition": "Call_Platinum_History"
     },
 
     "Call_Platinum_History": {
       "type": "CallSubmodule",
       "submodule": "nsclc/nsclc_platinum_history",
+      "direct_transition": "Call_Renal_Function"
+    },
+
+    "Call_Renal_Function": {
+      "type": "CallSubmodule",
+      "submodule": "nsclc/nsclc_renal_function",
       "direct_transition": "Call_Drug_Interactions"
     },
 
@@ -259,7 +263,7 @@
 
     "End_Follow_Up_Encounter": {
       "type": "EncounterEnd",
-      "direct_transition": "Terminal"
+      "direct_transition": "Follow_Up_Delay"
     },
 
     "Terminal": {

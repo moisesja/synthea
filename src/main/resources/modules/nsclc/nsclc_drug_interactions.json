@@ -1,0 +1,270 @@
+{
+  "name": "nsclc_drug_interactions",
+  "remarks": [
+    "Beta-owned Phase 1 submodule for active medication lists used in drug-interaction queries.",
+    "Reads nsclc_egfr_positive, nsclc_pdl1_tps_category, nsclc_prior_platinum, and nsclc_stage."
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "conditional_transition": [
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_egfr_positive",
+            "operator": "==",
+            "value": true
+          },
+          "transition": "MedicationOrder_Osimertinib"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_prior_platinum",
+            "operator": "==",
+            "value": true
+          },
+          "transition": "MedicationOrder_Pembrolizumab_PostPlatinum"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_pdl1_tps_category",
+            "operator": "==",
+            "value": "high"
+          },
+          "transition": "MedicationOrder_Pembrolizumab_FirstLine"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_stage",
+            "operator": "==",
+            "value": "II"
+          },
+          "transition": "MedicationOrder_Carboplatin_Adjuvant"
+        },
+        {
+          "condition": {
+            "condition_type": "Attribute",
+            "attribute": "nsclc_stage",
+            "operator": "==",
+            "value": "I"
+          },
+          "transition": "MedicationOrder_Prednisone_Localized"
+        },
+        {
+          "transition": "MedicationOrder_Carboplatin_Advanced"
+        }
+      ]
+    },
+    "MedicationOrder_Osimertinib": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "1860487",
+          "display": "Osimertinib"
+        }
+      ],
+      "direct_transition": "MedicationOrder_Omeprazole_Targeted"
+    },
+    "MedicationOrder_Omeprazole_Targeted": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "7646",
+          "display": "Omeprazole"
+        }
+      ],
+      "direct_transition": "MedicationOrder_Warfarin_Targeted"
+    },
+    "MedicationOrder_Warfarin_Targeted": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "11289",
+          "display": "Warfarin"
+        }
+      ],
+      "direct_transition": "Terminal"
+    },
+    "MedicationOrder_Pembrolizumab_PostPlatinum": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "2049125",
+          "display": "Pembrolizumab"
+        }
+      ],
+      "direct_transition": "MedicationOrder_Prednisone_PostPlatinum"
+    },
+    "MedicationOrder_Prednisone_PostPlatinum": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "5492",
+          "display": "Prednisone"
+        }
+      ],
+      "direct_transition": "MedicationOrder_Omeprazole_PostPlatinum"
+    },
+    "MedicationOrder_Omeprazole_PostPlatinum": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "7646",
+          "display": "Omeprazole"
+        }
+      ],
+      "direct_transition": "Terminal"
+    },
+    "MedicationOrder_Pembrolizumab_FirstLine": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "2049125",
+          "display": "Pembrolizumab"
+        }
+      ],
+      "direct_transition": "MedicationOrder_Omeprazole_FirstLine"
+    },
+    "MedicationOrder_Omeprazole_FirstLine": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "7646",
+          "display": "Omeprazole"
+        }
+      ],
+      "direct_transition": "Terminal"
+    },
+    "MedicationOrder_Carboplatin_Adjuvant": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "40048",
+          "display": "Carboplatin"
+        }
+      ],
+      "direct_transition": "MedicationOrder_Ondansetron_Adjuvant"
+    },
+    "MedicationOrder_Ondansetron_Adjuvant": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "596313",
+          "display": "Ondansetron"
+        }
+      ],
+      "direct_transition": "MedicationOrder_Filgrastim_Adjuvant"
+    },
+    "MedicationOrder_Filgrastim_Adjuvant": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "51781",
+          "display": "Filgrastim"
+        }
+      ],
+      "direct_transition": "Terminal"
+    },
+    "MedicationOrder_Prednisone_Localized": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "5492",
+          "display": "Prednisone"
+        }
+      ],
+      "direct_transition": "MedicationOrder_Omeprazole_Localized"
+    },
+    "MedicationOrder_Omeprazole_Localized": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "7646",
+          "display": "Omeprazole"
+        }
+      ],
+      "direct_transition": "Terminal"
+    },
+    "MedicationOrder_Carboplatin_Advanced": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "40048",
+          "display": "Carboplatin"
+        }
+      ],
+      "direct_transition": "MedicationOrder_Ondansetron_Advanced"
+    },
+    "MedicationOrder_Ondansetron_Advanced": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "596313",
+          "display": "Ondansetron"
+        }
+      ],
+      "direct_transition": "MedicationOrder_Filgrastim_Advanced"
+    },
+    "MedicationOrder_Filgrastim_Advanced": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "51781",
+          "display": "Filgrastim"
+        }
+      ],
+      "direct_transition": "MedicationOrder_Warfarin_Advanced"
+    },
+    "MedicationOrder_Warfarin_Advanced": {
+      "type": "MedicationOrder",
+      "reason": "nsclc_condition",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "11289",
+          "display": "Warfarin"
+        }
+      ],
+      "direct_transition": "Terminal"
+    },
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}
