@@ -12,16 +12,36 @@ set -euo pipefail
 #   EGFR_PREVALENCE  Expected cohort EGFR+ rate for post-processor variance
 #                    check (default: 0.095 — adeno 50% × 15% + squamous 25%
 #                    × 2% + large 15% × 5% + NOS 10% × 5%)
+#   OUTPUT_DIR       Base output directory (default: ./output). Each run
+#                    writes into a per-run subdirectory so runs stay isolated
+#                    and the post-processor never sees stale bundles.
+#   KEEP_OUTPUT      When set to 1, reuse $OUTPUT_DIR/fhir in place (append
+#                    mode) instead of creating a fresh per-run subdirectory.
 
 POPULATION=${1:-100}
 SEED=${2:-42}
 AGE_RANGE=${AGE_RANGE:-50-80}
 EGFR_PREVALENCE=${EGFR_PREVALENCE:-0.095}
-OUTPUT_DIR="./output"
-ENRICHED_DIR="./output/enriched"
+OUTPUT_DIR=${OUTPUT_DIR:-./output}
 
-echo "=== NSCLC Generation Pipeline ==="
+if [[ "${KEEP_OUTPUT:-0}" == "1" ]]; then
+  RUN_DIR="$OUTPUT_DIR"
+  FHIR_DIR="$OUTPUT_DIR/fhir"
+  ENRICHED_DIR="$OUTPUT_DIR/enriched"
+  echo "=== NSCLC Generation Pipeline (append mode) ==="
+else
+  # Per-run isolated directory keyed on seed + population to avoid
+  # mixing bundles from previous runs into the post-processor input.
+  RUN_DIR="$OUTPUT_DIR/run-p${POPULATION}-s${SEED}"
+  FHIR_DIR="$RUN_DIR/fhir"
+  ENRICHED_DIR="$RUN_DIR/enriched"
+  rm -rf "$RUN_DIR"
+  mkdir -p "$RUN_DIR"
+  echo "=== NSCLC Generation Pipeline ==="
+fi
+
 echo "Population: $POPULATION | Seed: $SEED | Age: $AGE_RANGE"
+echo "Run dir:    $RUN_DIR"
 echo
 
 # Step 1: Generate with Synthea + merged Flexporter
@@ -31,14 +51,15 @@ echo "Step 1: Running Synthea with Flexporter..."
   -p "$POPULATION" \
   -a "$AGE_RANGE" \
   -m nsclc \
-  -fm flexporter/nsclc_mcode_mappings.yml
+  -fm flexporter/nsclc_mcode_mappings.yml \
+  --exporter.baseDirectory="$RUN_DIR/"
 
 echo
 
 # Step 2: Post-process (MolecularSequence injection, distribution reshaping)
 echo "Step 2: Running post-processor..."
 python3 post-processor/nsclc_postprocess.py \
-  --input "$OUTPUT_DIR/fhir" \
+  --input "$FHIR_DIR" \
   --output "$ENRICHED_DIR" \
   --seed "$SEED" \
   --distributions post-processor/distributions/ \
@@ -72,5 +93,5 @@ else
 fi
 
 echo "=== Done. $POPULATION patients generated ==="
-echo "  Raw bundles:      $OUTPUT_DIR/fhir/"
+echo "  Raw bundles:      $FHIR_DIR/"
 echo "  Enriched bundles: $ENRICHED_DIR/"

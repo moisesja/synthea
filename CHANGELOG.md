@@ -24,6 +24,7 @@
     1. Synthea generation with merged Flexporter YAML, targeted at age range `50-80` (configurable via `AGE_RANGE` env var) per plan Section 9 to ensure NSCLC-relevant adults
     2. Post-processor with `--validate` and distribution variance checks (`EGFR_PREVALENCE` env var overrides the 0.095 default)
     3. Optional HAPI FHIR ingest — POST each enriched bundle to `$HAPI_URL` when that env var is set; skipped cleanly when unset so the script is usable without a running HAPI server
+    - **Per-run isolation**: each invocation writes into `./output/run-p${POPULATION}-s${SEED}/` (passed to Synthea via `--exporter.baseDirectory`) and cleans that directory first, so the post-processor never picks up stale bundles from earlier runs. Set `KEEP_OUTPUT=1` to opt into append-mode at `./output/fhir` for incremental/debug workflows. Base dir is configurable via `OUTPUT_DIR`.
     - Usage: `./generate.sh [population] [seed]`; HAPI ingest: `HAPI_URL=http://localhost:8080/fhir ./generate.sh 1000 42`
   - **Validation results (1,000-patient cohort, seed 42, 405 NSCLC patients after age targeting):**
     - All 12 endpoints: 100% coverage (stage group, T/N/M, pathology report, histology, tumor size, LN examined/positive, eGFR, genomic variant, PD-L1, plus MedicationRequest)
