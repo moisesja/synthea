@@ -1,0 +1,82 @@
+---
+# Unified NSCLC mCODE Enrichment
+# Phase 2 merge of nsclc_staging_profiles.yml + nsclc_biomarker_treatment.yml
+#
+# Applies mCODE STU3 profiles, wires TNM hasMember references,
+# enriches EGFR genomic variant components, and links medications
+# to the NSCLC Condition.
+#
+# Usage: ./run_synthea -p 100 -m nsclc -fm flexporter/nsclc_mcode_mappings.yml
+
+name: NSCLC mCODE Enrichment
+
+applicability: Condition.code.coding.where($this.code = '254637007')
+
+actions:
+  # 1. Apply mCODE profiles to matching resources
+  - name: Apply mCODE Profiles
+    profiles:
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-cancer-patient
+        applicability: Patient
+
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tnm-clinical-stage-group
+        applicability: Observation.code.coding.where($this.code = '21908-9')
+
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tnm-clinical-primary-tumor-category
+        applicability: Observation.code.coding.where($this.code = '21905-5')
+
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tnm-clinical-regional-nodes-category
+        applicability: Observation.code.coding.where($this.code = '21906-3')
+
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tnm-clinical-distant-metastases-category
+        applicability: Observation.code.coding.where($this.code = '21907-1')
+
+      - profile: http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-genomic-variant
+        applicability: Observation.code.coding.where($this.code = '69548-6')
+
+  # 2. Wire hasMember references on the TNM Stage Group observation
+  - name: Create TNM References
+    set_values:
+      - applicability: Observation.code.coding.where($this.code = '21908-9')
+        fields:
+          - location: Observation.hasMember.where(display='Tumor Category').reference
+            value: $findRef([Observation.code.coding.where($this.code = '21905-5')])
+          - location: Observation.hasMember.where(display='Nodes Category').reference
+            value: $findRef([Observation.code.coding.where($this.code = '21906-3')])
+          - location: Observation.hasMember.where(display='Metastases Category').reference
+            value: $findRef([Observation.code.coding.where($this.code = '21907-1')])
+
+  # 3. Add AJCC 8th edition staging method to TNM Stage Group
+  - name: Set Staging Method
+    set_values:
+      - applicability: Observation.code.coding.where($this.code = '21908-9')
+        fields:
+          - location: Observation.method.coding[0]
+            value:
+              system: http://snomed.info/sct
+              code: "897275008"
+              display: "American Joint Commission on Cancer, Cancer Staging Manual, 8th edition"
+
+  # 4. Add EGFR gene-studied component to the GenomicVariant observation
+  - name: Add EGFR Gene Studied Component
+    set_values:
+      - applicability: Observation.code.coding.where($this.code = '69548-6')
+        fields:
+          - location: Observation.component[0].code.coding[0]
+            value:
+              system: http://loinc.org
+              code: "48018-6"
+              display: "Gene studied [ID]"
+          - location: Observation.component[0].valueCodeableConcept.coding[0]
+            value:
+              system: http://www.genenames.org/geneId
+              code: "HGNC:3236"
+              display: "EGFR"
+
+  # 5. Link MedicationRequests to the NSCLC Condition
+  - name: Add Medication Reason References
+    set_values:
+      - applicability: MedicationRequest
+        fields:
+          - location: MedicationRequest.reasonReference[0].reference
+            value: $findRef([Condition.code.coding.where($this.code = '254637007')])
