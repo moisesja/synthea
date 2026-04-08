@@ -1,0 +1,20 @@
+{
+  "exon19_del": {
+    "start": 55174771,
+    "end": 55174785,
+    "observedAllele": "-",
+    "referenceAllele": "GAATTAAGAGAAGC"
+  },
+  "L858R": {
+    "start": 55191822,
+    "end": 55191822,
+    "observedAllele": "G",
+    "referenceAllele": "T"
+  },
+  "exon20_ins": {
+    "start": 55181378,
+    "end": 55181378,
+    "observedAllele": "GCCAGCGTG",
+    "referenceAllele": "-"
+  }
+}
