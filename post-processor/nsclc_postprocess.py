@@ -13,11 +13,9 @@ import glob
 import json
 import math
 import os
+import random
 import sys
 import uuid
-from datetime import datetime, date
-
-import numpy as np
 
 
 # ---------------------------------------------------------------------------
@@ -25,7 +23,7 @@ import numpy as np
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-EGFR_VARIANTS_PATH = os.path.join(SCRIPT_DIR, "distributions", "egfr_variants.json")
+DEFAULT_DISTRIBUTIONS_DIR = os.path.join(SCRIPT_DIR, "distributions")
 
 EGFR_MUTATION_WEIGHTS = {"exon19_del": 0.45, "L858R": 0.40, "exon20_ins": 0.15}
 
@@ -100,7 +98,7 @@ def inject_molecular_sequence(bundle, egfr_variants, rng):
         # Pick mutation subtype
         subtypes = list(EGFR_MUTATION_WEIGHTS.keys())
         weights = list(EGFR_MUTATION_WEIGHTS.values())
-        subtype = rng.choice(subtypes, p=weights)
+        subtype = rng.choices(subtypes, weights=weights, k=1)[0]
         variant_coords = egfr_variants[subtype]
 
         # Create MolecularSequence resource
@@ -173,7 +171,7 @@ def reshape_pdl1(bundle, rng):
         # Determine category from current value and reshape
         if current_val <= 1.0:
             # Negative: Beta(0.5, 5) scaled to [0, 1]
-            new_val = float(rng.beta(0.5, 5)) * 1.0
+            new_val = rng.betavariate(0.5, 5) * 1.0
             tier_code, tier_display = "LA9634-2", "Negative"
         elif current_val < 50.0:
             # Intermediate: keep as-is (uniform 1-49 is reasonable)
@@ -181,7 +179,7 @@ def reshape_pdl1(bundle, rng):
             tier_code, tier_display = "LA9633-4", "Low positive"
         else:
             # High: Beta(5, 2) scaled to [50, 100]
-            new_val = 50.0 + float(rng.beta(5, 2)) * 50.0
+            new_val = 50.0 + rng.betavariate(5, 2) * 50.0
             tier_code, tier_display = "LA9633-4", "Positive"
 
         vq["value"] = round(new_val, 1)
@@ -227,7 +225,7 @@ def reshape_tumor_size(bundle, rng):
         lo, hi, mu, sigma = params
         # Truncated log-normal: resample until within range (max 50 attempts)
         for _ in range(50):
-            new_val = float(rng.lognormal(mu, sigma))
+            new_val = rng.lognormvariate(mu, sigma)
             if lo <= new_val <= hi:
                 break
         else:
@@ -314,18 +312,55 @@ def process_bundle(filepath, egfr_variants, rng):
     return bundle, stats
 
 
+def parse_weight_list(value):
+    """Parse a comma-separated list of floats (e.g. '0.4,0.3,0.3')."""
+    try:
+        weights = [float(x) for x in value.split(",")]
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"Invalid weight list '{value}': {exc}")
+    if len(weights) != 3:
+        raise argparse.ArgumentTypeError(
+            "--pdl1-mixture-weights requires 3 values (negative,intermediate,high)")
+    total = sum(weights)
+    if not (0.99 <= total <= 1.01):
+        raise argparse.ArgumentTypeError(
+            f"--pdl1-mixture-weights must sum to 1.0 (got {total})")
+    return weights
+
+
 def main():
-    parser = argparse.ArgumentParser(description="NSCLC FHIR Bundle Post-Processor")
-    parser.add_argument("--input", required=True, help="Input directory with FHIR bundles")
-    parser.add_argument("--output", required=True, help="Output directory for enriched bundles")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser = argparse.ArgumentParser(
+        description="NSCLC FHIR Bundle Post-Processor",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument("--input", required=True,
+                        help="Input directory with FHIR bundles")
+    parser.add_argument("--output", required=True,
+                        help="Output directory for enriched bundles")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="Random seed")
+    parser.add_argument("--distributions", default=DEFAULT_DISTRIBUTIONS_DIR,
+                        help="Directory containing distribution JSON files (e.g. egfr_variants.json)")
+    parser.add_argument("--egfr-prevalence", type=float, default=None,
+                        help="Optional expected EGFR+ prevalence — if set, logs a warning when observed rate deviates by >0.05")
+    parser.add_argument("--pdl1-mixture-weights", type=parse_weight_list, default=None,
+                        help="Optional expected PD-L1 tier weights (neg,intermediate,high) — logs a warning when observed distribution deviates by >0.05 per tier")
+    parser.add_argument("--validate", action="store_true",
+                        help="Run endpoint coverage validation on enriched bundles after processing")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Do not write enriched bundles; only process and report stats")
     args = parser.parse_args()
 
-    os.makedirs(args.output, exist_ok=True)
-    rng = np.random.default_rng(args.seed)
+    if not args.dry_run:
+        os.makedirs(args.output, exist_ok=True)
+    rng = random.Random(args.seed)
 
-    # Load EGFR variant coordinates
-    with open(EGFR_VARIANTS_PATH) as f:
+    # Load EGFR variant coordinates from --distributions directory
+    egfr_variants_path = os.path.join(args.distributions, "egfr_variants.json")
+    if not os.path.isfile(egfr_variants_path):
+        print(f"ERROR: egfr_variants.json not found in {args.distributions}", file=sys.stderr)
+        sys.exit(1)
+    with open(egfr_variants_path) as f:
         egfr_variants = json.load(f)
 
     # Process all bundle files
@@ -333,17 +368,20 @@ def main():
     nsclc_count = 0
     total_stats = {"mol_seq_injected": 0, "pdl1_reshaped": 0,
                    "tumor_reshaped": 0, "egfr_adjusted": 0}
+    pdl1_tier_counts = {"negative": 0, "intermediate": 0, "high": 0}
+    egfr_present_count = 0
 
     for filepath in files:
         basename = os.path.basename(filepath)
         result = process_bundle(filepath, egfr_variants, rng)
 
         if result is None:
-            # Non-NSCLC bundle — copy as-is
-            with open(filepath) as f:
-                bundle = json.load(f)
-            with open(os.path.join(args.output, basename), "w") as f:
-                json.dump(bundle, f, indent=2)
+            # Non-NSCLC bundle — copy through unchanged
+            if not args.dry_run:
+                with open(filepath) as f:
+                    bundle = json.load(f)
+                with open(os.path.join(args.output, basename), "w") as f:
+                    json.dump(bundle, f, indent=2)
             continue
 
         bundle, stats = result
@@ -351,14 +389,104 @@ def main():
         for k in total_stats:
             total_stats[k] += stats[k]
 
-        with open(os.path.join(args.output, basename), "w") as f:
-            json.dump(bundle, f, indent=2)
+        # Collect EGFR and PD-L1 tier observations for variance checks
+        for _, obs in find_resources(bundle, "Observation", "69548-6"):
+            vals = [c.get("code") for c in obs.get("valueCodeableConcept", {}).get("coding", [])]
+            if "LA9633-4" in vals:
+                egfr_present_count += 1
+        for _, obs in find_resources(bundle, "Observation", "85319-2"):
+            v = obs.get("valueQuantity", {}).get("value")
+            if v is None:
+                continue
+            if v <= 1.0:
+                pdl1_tier_counts["negative"] += 1
+            elif v < 50.0:
+                pdl1_tier_counts["intermediate"] += 1
+            else:
+                pdl1_tier_counts["high"] += 1
+
+        if not args.dry_run:
+            with open(os.path.join(args.output, basename), "w") as f:
+                json.dump(bundle, f, indent=2)
 
     print(f"Processed {len(files)} bundles ({nsclc_count} NSCLC patients)")
     print(f"  MolecularSequence injected: {total_stats['mol_seq_injected']}")
     print(f"  PD-L1 TPS reshaped:         {total_stats['pdl1_reshaped']}")
     print(f"  Tumor sizes reshaped:        {total_stats['tumor_reshaped']}")
     print(f"  eGFR adjusted:               {total_stats['egfr_adjusted']}")
+
+    # Optional distribution sanity checks
+    if nsclc_count > 0 and args.egfr_prevalence is not None:
+        observed = egfr_present_count / nsclc_count
+        delta = abs(observed - args.egfr_prevalence)
+        marker = "OK" if delta <= 0.05 else "WARN"
+        print(f"  [{marker}] EGFR+ observed {observed:.1%} vs expected {args.egfr_prevalence:.1%} (Δ={delta:.1%})")
+
+    if nsclc_count > 0 and args.pdl1_mixture_weights is not None:
+        tiers = ["negative", "intermediate", "high"]
+        for tier, expected in zip(tiers, args.pdl1_mixture_weights):
+            observed = pdl1_tier_counts[tier] / nsclc_count
+            delta = abs(observed - expected)
+            marker = "OK" if delta <= 0.05 else "WARN"
+            print(f"  [{marker}] PD-L1 {tier}: observed {observed:.1%} vs expected {expected:.1%} (Δ={delta:.1%})")
+
+    # Optional endpoint coverage validation
+    if args.validate and not args.dry_run:
+        print()
+        validate_endpoints(args.output)
+
+
+def validate_endpoints(output_dir):
+    """Validate the 9 NSCLC endpoints across enriched bundles."""
+    endpoints = [
+        ("EP1 TNM stage group", "Observation", "21908-9"),
+        ("EP1 T category",      "Observation", "21905-5"),
+        ("EP1 N category",      "Observation", "21906-3"),
+        ("EP1 M category",      "Observation", "21907-1"),
+        ("EP2 pathology report","DiagnosticReport", "22637-3"),
+        ("EP2 histology",       "Observation", "59847-4"),
+        ("EP3 tumor size",      "Observation", "33756-8"),
+        ("EP4 LN examined",     "Observation", "21893-3"),
+        ("EP4 LN positive",     "Observation", "21894-1"),
+        ("EP6 eGFR",            "Observation", "62238-1"),
+        ("EP8 genomic variant", "Observation", "69548-6"),
+        ("EP9 PD-L1 TPS",       "Observation", "85319-2"),
+    ]
+    counts = {name: 0 for name, _, _ in endpoints}
+    has_meds = 0
+    has_mol_seq = 0
+    nsclc_total = 0
+
+    for filepath in sorted(glob.glob(os.path.join(output_dir, "*.json"))):
+        with open(filepath) as f:
+            bundle = json.load(f)
+        if not is_nsclc_bundle(bundle):
+            continue
+        nsclc_total += 1
+        for name, rtype, code in endpoints:
+            for _ in find_resources(bundle, rtype, code):
+                counts[name] += 1
+                break
+        for _, _ in find_resources(bundle, "MedicationRequest"):
+            has_meds += 1
+            break
+        for _, _ in find_resources(bundle, "MolecularSequence"):
+            has_mol_seq += 1
+            break
+
+    print(f"=== Endpoint Coverage ({nsclc_total} NSCLC bundles) ===")
+    all_ok = True
+    for name, _, _ in endpoints:
+        n = counts[name]
+        pct = 100 * n / nsclc_total if nsclc_total else 0
+        mark = "OK  " if n == nsclc_total else "FAIL"
+        if n != nsclc_total:
+            all_ok = False
+        print(f"  [{mark}] {name:<22} {n}/{nsclc_total} ({pct:.0f}%)")
+    print(f"  [OK  ] MedicationRequest      {has_meds}/{nsclc_total}")
+    print(f"  [INFO] MolecularSequence      {has_mol_seq}/{nsclc_total} (EGFR+ subset)")
+    if not all_ok:
+        sys.exit(2)
 
 
 if __name__ == "__main__":

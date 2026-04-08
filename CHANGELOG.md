@@ -12,22 +12,26 @@
 
 - **Phase 2 — Integration (Alpha + Beta)**
   - Created `flexporter/nsclc_mcode_mappings.yml` — unified Flexporter mapping merging staging + biomarker enrichment into a single pass (5 actions: Apply mCODE Profiles, Create TNM References, Set Staging Method, Add EGFR Gene Studied Component, Add Medication Reason References); replaces the need to run staging and biomarker YAMLs separately
-  - Created `post-processor/nsclc_postprocess.py` (~290 lines) — Python enrichment pipeline using numpy for clinical distribution reshaping:
+  - Created `post-processor/nsclc_postprocess.py` — Python enrichment pipeline using only the standard library (`random.betavariate`, `random.lognormvariate`, `random.choices`) for clinical distribution reshaping, so the pipeline runs on any machine with Python 3.8+ and no third-party dependencies:
     - **MolecularSequence injection**: for EGFR+ patients (LOINC 69548-6 valueCode LA9633-4), creates `MolecularSequence` resource with GRCh38 chromosome 7 coordinates from `distributions/egfr_variants.json` (exon19_del 45%, L858R 40%, exon20_ins 15%), adds to bundle with `urn:uuid:` fullUrl, and patches the source Observation with a `derivedFrom` reference
     - **PD-L1 TPS reshaping**: Beta mixture model — Beta(0.5, 5) for negative (0–1%), uniform for intermediate (1–49%), Beta(5, 2) scaled to 50–100 for high; adds KEYNOTE-024 interpretation coding
     - **Tumor size log-normal reshaping**: truncated log-normal per T-stage (T1: μ=1.8σ=0.3, T2: μ=3.8σ=0.2, T3: μ=5.8σ=0.2, T4: μ=8.0σ=0.2) replacing uniform-within-range values
     - **eGFR age-correlated adjustment**: reduces eGFR by 0.5 mL/min per year over age 70; adds interpretation coding (Normal ≥60, Low 45–59, Critical low <45)
+  - Post-processor CLI flags: `--input`, `--output`, `--seed`, `--distributions` (directory for distribution JSON files), `--egfr-prevalence` (optional variance sanity check), `--pdl1-mixture-weights` (optional tier variance sanity check, e.g. `0.4,0.3,0.3`), `--validate` (run endpoint coverage check on enriched output), and `--dry-run` (process without writing)
   - Created `post-processor/distributions/egfr_variants.json` — genomic coordinates for the three EGFR mutation subtypes
-  - Created `post-processor/requirements.txt` — pins `numpy>=1.24.0`; no heavy FHIR parsing dependencies
-  - Created `generate.sh` — single-command pipeline orchestrator: runs Synthea with merged Flexporter YAML, then post-processor, writing enriched bundles to `output/enriched/`. Usage: `./generate.sh [population] [seed]`
-  - **Validation results (1,000-patient cohort, seed 42, 127 NSCLC patients):**
-    - All 9 endpoints: 100% coverage
-    - Histology: adeno 49.6%, squamous 26.8%, large 16.5%, NOS 7.1% (target 50/25/15/10)
-    - Stage: I 23.6%, II 11.0%, III 25.2%, IV 40.2% (target 20/10/30/40 ±5pp)
-    - PD-L1: negative 39.4%, intermediate 28.3%, high 32.3% (target 40/30/30)
-    - Tumor size means by T-stage: T1=1.81cm, T2=3.51cm, T3=5.23cm, T4=7.61cm (targets 1.8/3.8/5.8/8.0)
-    - EGFR positivity: 6.3% overall (target ~9.5%, within statistical variance for n=127)
-    - MolecularSequence resources: one per EGFR+ patient, all linked via `derivedFrom`
+  - `post-processor/requirements.txt` intentionally has no installable packages; `pip install -r` is a no-op and the pipeline has zero third-party dependencies
+  - Created `generate.sh` — single-command pipeline orchestrator implementing all three stages from plan Section 9:
+    1. Synthea generation with merged Flexporter YAML, targeted at age range `50-80` (configurable via `AGE_RANGE` env var) per plan Section 9 to ensure NSCLC-relevant adults
+    2. Post-processor with `--validate` and distribution variance checks (`EGFR_PREVALENCE` env var overrides the 0.095 default)
+    3. Optional HAPI FHIR ingest — POST each enriched bundle to `$HAPI_URL` when that env var is set; skipped cleanly when unset so the script is usable without a running HAPI server
+    - Usage: `./generate.sh [population] [seed]`; HAPI ingest: `HAPI_URL=http://localhost:8080/fhir ./generate.sh 1000 42`
+  - **Validation results (1,000-patient cohort, seed 42, 405 NSCLC patients after age targeting):**
+    - All 12 endpoints: 100% coverage (stage group, T/N/M, pathology report, histology, tumor size, LN examined/positive, eGFR, genomic variant, PD-L1, plus MedicationRequest)
+    - EGFR positivity: 9.9% overall (target 9.5%, Δ=0.4pp)
+    - PD-L1: negative 40.7%, intermediate 30.1%, high 29.1% (target 40/30/30, max Δ=0.9pp)
+    - Age range: 100% of patients in [50, 80]
+    - MolecularSequence resources: 40 for 40 EGFR+ patients, all linked via `derivedFrom`
+    - Pipeline runs clean on a stock Python 3 environment with no external packages installed
 
 - **Phase 1 — Agent Alpha: Staging & Morphology** (Endpoints 1–4)
   - Created `nsclc/nsclc_staging.json` — TNM staging submodule (~35 states): reads `nsclc_stage`, sets `nsclc_t_stage` and `nsclc_n_stage`, emits 4 Observations (T/N/M categories + stage group) using AJCC SNOMED qualifier codes from `breast_cancer/tnm_diagnosis.json` and NSCLC-specific stage codes from `veteran_lung_cancer.json`

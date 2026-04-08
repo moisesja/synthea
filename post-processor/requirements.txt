@@ -1,1 +1,5 @@
-numpy>=1.24.0
+# NSCLC post-processor has no third-party dependencies.
+# All distribution sampling uses the Python stdlib (random.betavariate,
+# random.lognormvariate, random.choices). This file is intentionally
+# empty of installable packages so that `pip install -r requirements.txt`
+# is a no-op and the pipeline runs on any machine with Python 3.8+.
