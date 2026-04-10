@@ -4,8 +4,8 @@
     "Lymph node count submodule for Non-Small Cell Lung Cancer.",
     "Reads nsclc_n_stage (N0–N3) set by nsclc_staging submodule.",
     "Emits two sibling Observations:",
-    "  - LOINC 21893-3: Regional lymph nodes examined (total count)",
-    "  - LOINC 21894-1: Regional lymph nodes positive (metastatic count)",
+    "  - LOINC 21894-1: Regional lymph nodes examined (total count)",
+    "  - LOINC 21893-3: Regional lymph nodes positive (metastatic count)",
     "",
     "Positive count never exceeds examined count by construction",
     "(max positive range < min examined range for each N category).",
@@ -67,7 +67,7 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "21893-3",
+          "code": "21894-1",
           "display": "Regional lymph nodes examined [#] Specimen"
         }
       ],
@@ -86,7 +86,7 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "21894-1",
+          "code": "21893-3",
           "display": "Regional lymph nodes positive [#] Specimen"
         }
       ],
@@ -103,7 +103,7 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "21893-3",
+          "code": "21894-1",
           "display": "Regional lymph nodes examined [#] Specimen"
         }
       ],
@@ -122,7 +122,7 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "21894-1",
+          "code": "21893-3",
           "display": "Regional lymph nodes positive [#] Specimen"
         }
       ],
@@ -141,7 +141,7 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "21893-3",
+          "code": "21894-1",
           "display": "Regional lymph nodes examined [#] Specimen"
         }
       ],
@@ -160,7 +160,7 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "21894-1",
+          "code": "21893-3",
           "display": "Regional lymph nodes positive [#] Specimen"
         }
       ],
@@ -179,7 +179,7 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "21893-3",
+          "code": "21894-1",
           "display": "Regional lymph nodes examined [#] Specimen"
         }
       ],
@@ -198,7 +198,7 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "21894-1",
+          "code": "21893-3",
           "display": "Regional lymph nodes positive [#] Specimen"
         }
       ],

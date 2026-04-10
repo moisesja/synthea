@@ -204,7 +204,7 @@ def reshape_pdl1(bundle, rng):
 def reshape_tumor_size(bundle, rng):
     """Reshape tumor sizes using truncated log-normal per T-stage range."""
     reshaped = 0
-    for _, obs in find_resources(bundle, "Observation", "33756-8"):
+    for _, obs in find_resources(bundle, "Observation", "21889-1"):
         vq = obs.get("valueQuantity", {})
         current_val = vq.get("value")
         if current_val is None:
@@ -443,11 +443,11 @@ def validate_endpoints(output_dir):
         ("EP1 T category",      "Observation", "21905-5"),
         ("EP1 N category",      "Observation", "21906-3"),
         ("EP1 M category",      "Observation", "21907-1"),
-        ("EP2 pathology report","DiagnosticReport", "22637-3"),
+        ("EP2 pathology report","DiagnosticReport", "11529-5"),
         ("EP2 histology",       "Observation", "59847-4"),
-        ("EP3 tumor size",      "Observation", "33756-8"),
-        ("EP4 LN examined",     "Observation", "21893-3"),
-        ("EP4 LN positive",     "Observation", "21894-1"),
+        ("EP3 tumor size",      "Observation", "21889-1"),
+        ("EP4 LN examined",     "Observation", "21894-1"),
+        ("EP4 LN positive",     "Observation", "21893-3"),
         ("EP6 eGFR",            "Observation", "62238-1"),
         ("EP8 genomic variant", "Observation", "69548-6"),
         ("EP9 PD-L1 TPS",       "Observation", "85319-2"),

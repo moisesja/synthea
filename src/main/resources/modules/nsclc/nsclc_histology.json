@@ -3,7 +3,7 @@
   "remarks": [
     "Histology/morphology submodule for Non-Small Cell Lung Cancer.",
     "Reads nsclc_histology_subtype from parent module.",
-    "Emits a DiagnosticReport (LOINC 22637-3) with nested histology Observation (LOINC 59847-4).",
+    "Emits a DiagnosticReport (LOINC 11529-5) with nested histology Observation (LOINC 59847-4).",
     "",
     "Sources:",
     "  WHO Classification of Tumors of the Lung, 5th Edition (2021)",
@@ -59,8 +59,8 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "22637-3",
-          "display": "Pathology report final diagnosis Narrative"
+          "code": "11529-5",
+          "display": "Surgical pathology study"
         }
       ],
       "observations": [
@@ -89,8 +89,8 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "22637-3",
-          "display": "Pathology report final diagnosis Narrative"
+          "code": "11529-5",
+          "display": "Surgical pathology study"
         }
       ],
       "observations": [
@@ -119,8 +119,8 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "22637-3",
-          "display": "Pathology report final diagnosis Narrative"
+          "code": "11529-5",
+          "display": "Surgical pathology study"
         }
       ],
       "observations": [
@@ -149,8 +149,8 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "22637-3",
-          "display": "Pathology report final diagnosis Narrative"
+          "code": "11529-5",
+          "display": "Surgical pathology study"
         }
       ],
       "observations": [

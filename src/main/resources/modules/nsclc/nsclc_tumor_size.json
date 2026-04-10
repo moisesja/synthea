@@ -3,7 +3,7 @@
   "remarks": [
     "Tumor size submodule for Non-Small Cell Lung Cancer.",
     "Reads nsclc_t_stage (T1–T4) set by nsclc_staging submodule.",
-    "Emits one Observation (LOINC 33756-8) with valueQuantity in cm.",
+    "Emits one Observation (LOINC 21889-1) with valueQuantity in cm.",
     "Size ranges follow AJCC 8th edition T-category cutoffs for NSCLC.",
     "",
     "Sources:",
@@ -63,8 +63,8 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "33756-8",
-          "display": "Tumor size.greatest dimension by CAP cancer protocols"
+          "code": "21889-1",
+          "display": "Size Tumor"
         }
       ],
       "range": {
@@ -81,8 +81,8 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "33756-8",
-          "display": "Tumor size.greatest dimension by CAP cancer protocols"
+          "code": "21889-1",
+          "display": "Size Tumor"
         }
       ],
       "range": {
@@ -99,8 +99,8 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "33756-8",
-          "display": "Tumor size.greatest dimension by CAP cancer protocols"
+          "code": "21889-1",
+          "display": "Size Tumor"
         }
       ],
       "range": {
@@ -117,8 +117,8 @@
       "codes": [
         {
           "system": "LOINC",
-          "code": "33756-8",
-          "display": "Tumor size.greatest dimension by CAP cancer protocols"
+          "code": "21889-1",
+          "display": "Size Tumor"
         }
       ],
       "range": {
